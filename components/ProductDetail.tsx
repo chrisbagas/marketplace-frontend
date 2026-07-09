@@ -94,6 +94,20 @@ export default function ProductDetail({ listing, related }: { listing: Product; 
           </p>
           <p className="mt-4 text-3xl font-extrabold text-jade-800">{rupiah(listing.price)}</p>
 
+          {listing.tags.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {listing.tags.map((t) => (
+                <Link
+                  key={t}
+                  href={`/products?q=${encodeURIComponent(t)}`}
+                  className="chip border border-ink/10 bg-white text-xs text-ink/55 hover:border-jade-700 hover:text-jade-700"
+                >
+                  #{t}
+                </Link>
+              ))}
+            </div>
+          )}
+
           <div className="mt-6">
             <p className="label">Warna: {COLORS[color].label}</p>
             <div className="flex gap-2">

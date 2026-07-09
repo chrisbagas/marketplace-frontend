@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Mockup, { PHOTO_CREDIT, PRINT_CM, photoInfo, viewsFor, type MockupView } from "@/components/Mockup";
+import { getCategories, type Category } from "@/lib/api";
 import { COLORS, DESIGNS, PRODUCT_TYPES, type ProductType } from "@/lib/data";
 import { rupiah } from "@/lib/format";
 import { track } from "@/lib/track";
@@ -20,6 +21,9 @@ export default function StudioPage() {
   const [widthCm, setWidthCm] = useState(24);
   const [offsetCm, setOffsetCm] = useState(0);
   const [margin, setMargin] = useState(34000);
+  const [cats, setCats] = useState<Category[]>([]);
+  const [selCats, setSelCats] = useState<string[]>([]);
+  const [tagsInput, setTagsInput] = useState("");
   const [sent, setSent] = useState<string | null>(null);
   const [error, setError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -37,7 +41,14 @@ export default function StudioPage() {
     // deep-link support: /designer/studio?view=model|photo-model|photo-flat
     const v = new URLSearchParams(window.location.search).get("view");
     if (v && ["flat", "model", "photo-flat", "photo-model"].includes(v)) setView(v as MockupView);
+    getCategories().then(setCats).catch(() => {});
   }, []);
+
+  function toggleCat(id: string) {
+    setSelCats((cur) =>
+      cur.includes(id) ? cur.filter((c) => c !== id) : cur.length >= 3 ? cur : [...cur, id]
+    );
+  }
 
   function pickType(t: ProductType) {
     setType(t);
@@ -68,7 +79,16 @@ export default function StudioPage() {
     const res = await fetch("/api/designs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, designer: "Raka Wijaya", type, color: colorId, price, uri: designUri }),
+      body: JSON.stringify({
+        title,
+        designer: "Raka Wijaya",
+        type,
+        color: colorId,
+        price,
+        uri: designUri,
+        categories: selCats,
+        tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
+      }),
     });
     const data = await res.json();
     if (!res.ok) return setError(data.error ?? "Gagal mengirim desain");
@@ -154,7 +174,36 @@ export default function StudioPage() {
           </section>
 
           <section className="card p-5">
-            <p className="font-bold">4 · Harga & ajukan</p>
+            <p className="font-bold">4 · Kategori & tag</p>
+            <p className="mt-1 text-xs text-ink/50">Kategori membantu pembeli menjelajah (maks 3); tag bebas ala hashtag untuk pencarian.</p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {cats.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => toggleCat(c.id)}
+                  className={`chip border text-xs transition ${
+                    selCats.includes(c.id)
+                      ? "border-jade-700 bg-jade-700 text-white"
+                      : "border-ink/12 bg-white text-ink/60 hover:border-ink/30"
+                  }`}
+                >
+                  {c.emoji} {c.label}
+                </button>
+              ))}
+            </div>
+            <label className="label mt-3" htmlFor="tags">Tag (pisahkan dengan koma)</label>
+            <input
+              id="tags"
+              className="input"
+              placeholder="senja, retro, gunung"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+            />
+          </section>
+
+          <section className="card p-5">
+            <p className="font-bold">5 · Harga & ajukan</p>
             <label className="label mt-3" htmlFor="judul">Judul produk</label>
             <input id="judul" className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
             <label className="label mt-3 flex justify-between">
