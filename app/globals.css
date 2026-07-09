@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+
+  --color-cream: #faf6ef;
+  --color-paper: #ffffff;
+  --color-ink: #1c1814;
+
+  --color-jade-50: #ecf7f1;
+  --color-jade-100: #d6eee3;
+  --color-jade-200: #addcc7;
+  --color-jade-300: #7cc5a6;
+  --color-jade-400: #47a981;
+  --color-jade-500: #1f8f63;
+  --color-jade-600: #0e7a52;
+  --color-jade-700: #0b6244;
+  --color-jade-800: #0a4f38;
+  --color-jade-900: #083d2c;
+
+  --color-sun-50: #fff8e8;
+  --color-sun-100: #fdeec6;
+  --color-sun-200: #fbdf94;
+  --color-sun-300: #f8c868;
+  --color-sun-400: #f5a524;
+  --color-sun-500: #e08e0b;
+  --color-sun-600: #b87209;
+
+  --color-coral-50: #fff0ed;
+  --color-coral-100: #ffddd6;
+  --color-coral-200: #ffbcae;
+  --color-coral-400: #ff7a64;
+  --color-coral-500: #f55b42;
+  --color-coral-600: #d94326;
+}
+
+/* Chart tokens — validated reference palette (light mode) */
+:root {
+  --viz-surface: #fcfcfb;
+  --viz-ink: #0b0b0b;
+  --viz-ink-2: #52514e;
+  --viz-muted: #898781;
+  --viz-grid: #e1e0d9;
+  --viz-axis: #c3c2b7;
+  --viz-s1: #2a78d6;
+  --viz-s2: #1baf7a;
+  --viz-seq-250: #86b6ef;
+  --viz-seq-350: #5598e7;
+  --viz-seq-450: #2a78d6;
+  --viz-seq-550: #1c5cab;
+  --viz-good: #0ca30c;
+  --viz-warn: #fab219;
+  --viz-serious: #ec835a;
+  --viz-crit: #d03b3b;
+  --viz-up: #006300;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-jade-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-jade-800 active:scale-[0.98] disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-ink/15 bg-white px-6 py-3 text-sm font-semibold text-ink transition hover:border-ink/30 hover:bg-cream active:scale-[0.98];
+  }
+  .btn-sm {
+    @apply px-4 py-2 text-xs;
+  }
+  .card {
+    @apply rounded-2xl border border-ink/8 bg-white;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold;
+  }
+  .input {
+    @apply w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-jade-600 focus:ring-2 focus:ring-jade-600/20;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-semibold text-ink/60;
+  }
+}
