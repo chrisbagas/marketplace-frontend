@@ -6,9 +6,9 @@ import Avatar from "@/components/Avatar";
 import Mockup, { PHOTO_CREDIT, photoInfo, viewsFor, type MockupView } from "@/components/Mockup";
 import ProductCard from "@/components/ProductCard";
 import { COLORS, designerById } from "@/lib/data";
-import type { Product } from "@/lib/types";
+import type { Product, Review } from "@/lib/types";
 import { addToCart } from "@/lib/cart";
-import { rupiah, compact } from "@/lib/format";
+import { rupiah, compact, timeAgo } from "@/lib/format";
 import { track } from "@/lib/track";
 
 export default function ProductDetail({ listing, related }: { listing: Product; related: Product[] }) {
@@ -17,10 +17,15 @@ export default function ProductDetail({ listing, related }: { listing: Product; 
   const [qty, setQty] = useState(1);
   const [view, setView] = useState<MockupView>("flat");
   const [added, setAdded] = useState(false);
+  const [reviewData, setReviewData] = useState<{ reviews: Review[]; avg: number; count: number } | null>(null);
   const designer = designerById(listing.designerId);
 
   useEffect(() => {
     track("view_product", { label: listing.id, page: `/product/${listing.id}`, value: listing.price });
+    fetch(`/api/reviews?listing=${listing.id}`)
+      .then((r) => r.json())
+      .then(setReviewData)
+      .catch(() => {});
   }, [listing.id, listing.price]);
 
   function handleAdd() {
@@ -168,6 +173,36 @@ export default function ProductDetail({ listing, related }: { listing: Product; 
           </div>
         </div>
       </div>
+
+      {/* ulasan pembeli (hanya yang lolos moderasi) */}
+      <section className="mt-16">
+        <h2 className="text-xl font-extrabold tracking-tight">
+          Ulasan pembeli
+          {reviewData && reviewData.count > 0 && (
+            <span className="ml-2 text-base font-semibold text-ink/55">
+              ★ {reviewData.avg} · {reviewData.count} ulasan terverifikasi
+            </span>
+          )}
+        </h2>
+        {!reviewData || reviewData.reviews.length === 0 ? (
+          <p className="mt-3 text-sm text-ink/55">
+            Belum ada ulasan. Pembeli bisa menilai setelah pesanannya selesai.
+          </p>
+        ) : (
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {reviewData.reviews.map((rv) => (
+              <div key={rv.id} className="card p-4">
+                <p className="text-sm">
+                  <span className="text-sun-500">{"★".repeat(rv.rating)}{"☆".repeat(5 - rv.rating)}</span>
+                  <span className="ml-2 font-semibold">{rv.author}</span>
+                  <span className="ml-2 text-xs text-ink/45">{timeAgo(rv.t)} · pembelian terverifikasi</span>
+                </p>
+                {rv.comment && <p className="mt-2 text-sm text-ink/70">{rv.comment}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {related.length > 0 && (
         <section className="mt-16">

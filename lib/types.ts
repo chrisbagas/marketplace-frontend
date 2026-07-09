@@ -76,6 +76,18 @@ export type DesignSubmission = {
   listingId?: string; // terisi setelah disetujui → tayang di katalog
 };
 
+export type Review = {
+  id: number;
+  t: number;
+  listingId: string;
+  orderId: string;
+  author: string;
+  rating: number; // 1–5
+  comment: string;
+  status: "review" | "disetujui" | "ditolak";
+  note?: string;
+};
+
 export type DayStat = {
   date: string; // yyyy-mm-dd
   visits: number;
