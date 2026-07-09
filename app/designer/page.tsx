@@ -5,9 +5,10 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import Mockup from "@/components/Mockup";
 import { StatTile, LineChart } from "@/components/charts";
-import { ALL_LISTINGS, COLORS, DESIGNERS } from "@/lib/data";
+import { COLORS, DESIGNERS, PRODUCT_TYPES } from "@/lib/data";
+import { getProducts } from "@/lib/api";
 import { rupiah, compact, timeAgo } from "@/lib/format";
-import type { DesignSubmission, DayStat } from "@/lib/types";
+import type { DesignSubmission, DayStat, Product } from "@/lib/types";
 
 // Demo persona: the session is treated as designer "Raka Wijaya" (no login in
 // the prototype). His listings + anything submitted from the Studio show here.
@@ -23,16 +24,19 @@ const STATUS_CHIP: Record<string, string> = {
 export default function DesignerDashboard() {
   const [days, setDays] = useState<DayStat[]>([]);
   const [subs, setSubs] = useState<DesignSubmission[]>([]);
+  const [myListings, setMyListings] = useState<Product[]>([]);
+  const [editing, setEditing] = useState<Product | null>(null);
+
+  const loadListings = () => getProducts({ designer: ME.id }).then(setMyListings).catch(() => {});
 
   useEffect(() => {
     fetch("/api/stats").then((r) => r.json()).then((d) => setDays(d.days ?? []));
+    loadListings();
     const loadSubs = () => fetch("/api/designs").then((r) => r.json()).then((d) => setSubs(d.designs ?? []));
     loadSubs();
     const t = setInterval(loadSubs, 8000);
     return () => clearInterval(t);
   }, []);
-
-  const myListings = ALL_LISTINGS.filter((l) => l.designerId === ME.id);
   const totalSold = myListings.reduce((a, l) => a + l.sold, 0);
   const royalty = days.map((d) => ({ label: d.date.slice(5), value: Math.round(d.revenue * ROYALTY_SHARE * 0.34) }));
   const balance = royalty.reduce((a, r) => a + r.value, 0);
@@ -116,7 +120,10 @@ export default function DesignerDashboard() {
 
       {/* live listings */}
       <section className="mt-10">
-        <h2 className="text-xl font-extrabold tracking-tight">Produk aktif</h2>
+        <h2 className="text-xl font-extrabold tracking-tight">Kelola produk</h2>
+        <p className="mt-0.5 text-sm text-ink/55">
+          Ubah nama, harga, warna, atau nonaktifkan listing. Desainnya sendiri tidak bisa diganti — ajukan karya baru lewat Studio.
+        </p>
         <div className="card mt-4 overflow-x-auto">
           <table className="w-full min-w-130 text-left text-sm">
             <thead>
@@ -126,29 +133,129 @@ export default function DesignerDashboard() {
                 <th className="p-3 font-semibold">Terjual</th>
                 <th className="p-3 font-semibold">Rating</th>
                 <th className="p-3 font-semibold">Estimasi royalti</th>
+                <th className="p-3 font-semibold" />
               </tr>
             </thead>
             <tbody>
               {myListings.map((l) => (
-                <tr key={l.id} className="border-b border-ink/5 last:border-0 hover:bg-cream/60">
+                <tr key={l.id} className={`border-b border-ink/5 last:border-0 hover:bg-cream/60 ${l.active === false ? "opacity-50" : ""}`}>
                   <td className="p-3">
                     <Link href={`/product/${l.id}`} className="flex items-center gap-3 font-semibold hover:text-jade-700">
                       <span className="h-10 w-10 shrink-0 rounded-lg bg-jade-50 p-0.5">
-                        <Mockup type={l.type} colorHex={COLORS[l.colorIds[0]].hex} designUri={l.designUri} />
+                        <Mockup type={l.type} colorHex={COLORS[l.colorIds[0]]?.hex ?? "#eee"} designUri={l.designUri} />
                       </span>
-                      {l.title}
+                      <span>
+                        {l.title}
+                        {l.active === false && <span className="ml-2 chip bg-ink/8 text-[10px] text-ink/50">nonaktif</span>}
+                      </span>
                     </Link>
                   </td>
                   <td className="p-3">{rupiah(l.price)}</td>
                   <td className="p-3">{compact(l.sold)}</td>
                   <td className="p-3">★ {l.rating}</td>
                   <td className="p-3 font-semibold text-jade-800">{rupiah(l.sold * l.price * ROYALTY_SHARE)}</td>
+                  <td className="p-3">
+                    <button onClick={() => setEditing(l)} className="btn-secondary btn-sm" data-track={`edit-${l.id}`}>✎ Ubah</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {editing && (
+          <ListingEditor
+            key={editing.id}
+            listing={editing}
+            onClose={() => setEditing(null)}
+            onSaved={() => { setEditing(null); loadListings(); }}
+          />
+        )}
       </section>
+    </div>
+  );
+}
+
+function ListingEditor({ listing, onClose, onSaved }: { listing: Product; onClose: () => void; onSaved: () => void }) {
+  const pt = PRODUCT_TYPES[listing.type];
+  const [title, setTitle] = useState(listing.title);
+  const [price, setPrice] = useState(listing.price);
+  const [colors, setColors] = useState<string[]>(listing.colorIds);
+  const [active, setActive] = useState(listing.active !== false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  function toggleColor(c: string) {
+    setColors((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
+  }
+
+  async function save() {
+    setBusy(true);
+    setError("");
+    const res = await fetch(`/api/listings/${listing.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, price, colorIds: colors, active }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) return setError(data.error ?? "Gagal menyimpan");
+    onSaved();
+  }
+
+  return (
+    <div className="card mt-4 border-2 border-jade-700/30 p-5">
+      <div className="flex items-center justify-between">
+        <p className="font-bold">Ubah listing · {listing.id}</p>
+        <button onClick={onClose} className="text-sm text-ink/50 hover:text-ink">✕ Tutup</button>
+      </div>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div>
+          <label className="label" htmlFor="edit-title">Nama produk</label>
+          <input id="edit-title" className="input" value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} />
+          <label className="label mt-3 flex justify-between" htmlFor="edit-price">
+            <span>Harga jual</span>
+            <span className="text-ink/45">min {rupiah(pt.base)} (harga dasar)</span>
+          </label>
+          <input
+            id="edit-price"
+            type="number"
+            className="input"
+            min={pt.base}
+            step={1000}
+            value={price}
+            onChange={(e) => setPrice(+e.target.value)}
+          />
+          <p className="mt-1 text-xs text-ink/50">Royalti kamu ≈ {rupiah(Math.max(0, Math.round(price * ROYALTY_SHARE)))} per penjualan.</p>
+        </div>
+        <div>
+          <p className="label">Warna tersedia</p>
+          <div className="flex flex-wrap gap-2">
+            {pt.colorIds.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => toggleColor(c)}
+                aria-pressed={colors.includes(c)}
+                className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                  colors.includes(c) ? "border-jade-700 bg-jade-50 text-jade-800" : "border-ink/12 bg-white text-ink/45"
+                }`}
+              >
+                <span className="h-4 w-4 rounded-full border border-ink/15" style={{ background: COLORS[c].hex }} />
+                {COLORS[c].label}
+              </button>
+            ))}
+          </div>
+          <label className="mt-4 flex items-center gap-2 text-sm font-semibold">
+            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 accent-jade-700" />
+            Tayang di katalog
+          </label>
+          <p className="mt-1 text-xs text-ink/50">Nonaktifkan untuk menyembunyikan dari pembeli tanpa menghapus data penjualan.</p>
+        </div>
+      </div>
+      {error && <p className="mt-3 rounded-lg bg-coral-50 p-2 text-xs font-semibold text-coral-600">{error}</p>}
+      <button onClick={save} disabled={busy} className="btn-primary mt-4" data-track="simpan-listing">
+        {busy ? "Menyimpan…" : "Simpan perubahan"}
+      </button>
     </div>
   );
 }
