@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Avatar from "@/components/Avatar";
 import Mockup, { PHOTO_CREDIT, photoInfo, viewsFor, type MockupView } from "@/components/Mockup";
 import ProductCard from "@/components/ProductCard";
 import { COLORS, designerById } from "@/lib/data";
@@ -88,8 +89,9 @@ export default function ProductDetail({ listing, related }: { listing: Product; 
         <div>
           {listing.badge && <span className="chip bg-sun-400 text-ink">{listing.badge}</span>}
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{listing.title}</h1>
-          <p className="mt-2 text-sm text-ink/60">
-            ★ {listing.rating} · {compact(listing.sold)} terjual · oleh{" "}
+          <p className="mt-2 flex flex-wrap items-center gap-x-1.5 text-sm text-ink/60">
+            ★ {listing.rating} · {compact(listing.sold)} terjual · oleh
+            <Avatar uri={listing.designerAvatar} name={listing.designerName} hue={designer?.hue ?? 152} size={22} />
             <span className="font-semibold text-jade-700">{listing.designerName}</span>{designer && <> ({designer.city})</>}
           </p>
           <p className="mt-4 text-3xl font-extrabold text-jade-800">{rupiah(listing.price)}</p>

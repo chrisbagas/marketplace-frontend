@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Avatar from "@/components/Avatar";
 import Mockup from "@/components/Mockup";
 import { StatTile, LineChart } from "@/components/charts";
 import { ALL_LISTINGS, COLORS, DESIGNERS } from "@/lib/data";
@@ -44,9 +45,7 @@ export default function DesignerDashboard() {
     <div className="mx-auto max-w-6xl px-4 py-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full text-xl font-extrabold text-white" style={{ background: `hsl(${ME.hue} 45% 40%)` }}>
-            {ME.name[0]}
-          </div>
+          <Avatar name={ME.name} hue={ME.hue} size={56} className="shadow-md ring-2 ring-white" />
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight">Halo, {ME.name.split(" ")[0]} 👋</h1>
             <p className="text-sm text-ink/55">Studio Kreator · {ME.city} · {compact(ME.followers)} pengikut</p>
