@@ -1,9 +1,11 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
-import { ALL_LISTINGS, PRODUCT_TYPES, type ProductType } from "@/lib/data";
+import { PRODUCT_TYPES } from "@/lib/data";
+import { getProducts } from "@/lib/api";
+import type { Product } from "@/lib/types";
 import { track } from "@/lib/track";
 
 const TYPE_FILTERS = [
@@ -21,44 +23,49 @@ const SORTS = [
 function Catalog() {
   const params = useSearchParams();
   const [type, setType] = useState<string>(params.get("type") ?? "semua");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(params.get("q") ?? "");
+  const [q, setQ] = useState(params.get("q") ?? ""); // kata kunci yang benar-benar dicari
   const [sort, setSort] = useState("populer");
+  const [products, setProducts] = useState<Product[] | null>(null);
+  const [error, setError] = useState(false);
+
+  // katalog datang dari backend (PostgreSQL) — filter jenis & pencarian di server
+  useEffect(() => {
+    let alive = true;
+    getProducts({ type, q })
+      .then((list) => alive && (setProducts(list), setError(false)))
+      .catch(() => alive && setError(true));
+    return () => { alive = false; };
+  }, [type, q]);
 
   const items = useMemo(() => {
-    let list = [...ALL_LISTINGS];
-    if (type !== "semua") list = list.filter((l) => l.type === (type as ProductType));
-    const q = query.toLowerCase().trim();
-    if (q) {
-      list = list.filter(
-        (l) =>
-          l.title.toLowerCase().includes(q) ||
-          l.designerName.toLowerCase().includes(q) ||
-          l.tags.some((t) => t.includes(q))
-      );
-    }
+    const list = [...(products ?? [])];
     if (sort === "murah") list.sort((a, b) => a.price - b.price);
     else if (sort === "mahal") list.sort((a, b) => b.price - a.price);
     else if (sort === "rating") list.sort((a, b) => b.rating - a.rating);
     else list.sort((a, b) => b.sold - a.sold);
     return list;
-  }, [type, query, sort]);
+  }, [products, sort]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="text-3xl font-extrabold tracking-tight">Jelajahi karya</h1>
-      <p className="mt-1 text-sm text-ink/55">{ALL_LISTINGS.length} produk dari kreator seluruh Indonesia</p>
+      <p className="mt-1 text-sm text-ink/55">
+        {products ? `${products.length} produk` : "Memuat produk"} dari kreator seluruh Indonesia
+      </p>
 
       <form
         className="mt-6 flex flex-col gap-3 md:flex-row md:items-center"
         onSubmit={(e) => {
           e.preventDefault();
+          setQ(query.trim());
           if (query.trim()) track("search", { label: query.trim(), page: "/products" });
         }}
       >
         <div className="relative flex-1">
           <input
             className="input pl-10"
-            placeholder="Cari desain, kreator, atau tema… (mis. batik, senja, kopi)"
+            placeholder="Cari desain, kreator, atau tag… (mis. batik, senja, kopi)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -66,6 +73,7 @@ function Catalog() {
             <circle cx="11" cy="11" r="7" /><path d="m21 21-4-4" />
           </svg>
         </div>
+        <button type="submit" className="btn-secondary btn-sm md:w-auto">Cari</button>
         <select className="input md:w-52" value={sort} onChange={(e) => setSort(e.target.value)}>
           {SORTS.map((s) => (
             <option key={s.id} value={s.id}>{s.label}</option>
@@ -87,9 +95,19 @@ function Catalog() {
         ))}
       </div>
 
-      {items.length === 0 ? (
+      {error ? (
         <div className="card mt-8 p-12 text-center text-ink/55">
-          Tidak ada hasil untuk “{query}”. Coba kata kunci lain seperti <em>batik</em> atau <em>senja</em>.
+          Katalog tidak bisa dimuat — pastikan backend berjalan (<code>go run ./cmd/api</code> di folder backend).
+        </div>
+      ) : products === null ? (
+        <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="card h-72 animate-pulse bg-ink/5" />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <div className="card mt-8 p-12 text-center text-ink/55">
+          Tidak ada hasil untuk “{q}”. Coba kata kunci lain seperti <em>batik</em> atau <em>senja</em>.
         </div>
       ) : (
         <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">

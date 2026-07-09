@@ -4,18 +4,19 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Mockup, { PHOTO_CREDIT, photoInfo, viewsFor, type MockupView } from "@/components/Mockup";
 import ProductCard from "@/components/ProductCard";
-import { COLORS, designerById, type FullListing } from "@/lib/data";
+import { COLORS, designerById } from "@/lib/data";
+import type { Product } from "@/lib/types";
 import { addToCart } from "@/lib/cart";
 import { rupiah, compact } from "@/lib/format";
 import { track } from "@/lib/track";
 
-export default function ProductDetail({ listing, related }: { listing: FullListing; related: FullListing[] }) {
+export default function ProductDetail({ listing, related }: { listing: Product; related: Product[] }) {
   const [color, setColor] = useState(listing.colorIds[0]);
   const [size, setSize] = useState(listing.sizes[Math.min(1, listing.sizes.length - 1)]);
   const [qty, setQty] = useState(1);
   const [view, setView] = useState<MockupView>("flat");
   const [added, setAdded] = useState(false);
-  const designer = designerById(listing.designerId)!;
+  const designer = designerById(listing.designerId);
 
   useEffect(() => {
     track("view_product", { label: listing.id, page: `/product/${listing.id}`, value: listing.price });
@@ -89,7 +90,7 @@ export default function ProductDetail({ listing, related }: { listing: FullListi
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{listing.title}</h1>
           <p className="mt-2 text-sm text-ink/60">
             ★ {listing.rating} · {compact(listing.sold)} terjual · oleh{" "}
-            <span className="font-semibold text-jade-700">{listing.designerName}</span> ({designer.city})
+            <span className="font-semibold text-jade-700">{listing.designerName}</span>{designer && <> ({designer.city})</>}
           </p>
           <p className="mt-4 text-3xl font-extrabold text-jade-800">{rupiah(listing.price)}</p>
 

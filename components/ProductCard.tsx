@@ -1,9 +1,10 @@
 import Link from "next/link";
 import Mockup from "./Mockup";
-import { COLORS, type FullListing } from "@/lib/data";
+import { COLORS } from "@/lib/data";
+import type { Product } from "@/lib/types";
 import { rupiah, compact } from "@/lib/format";
 
-export default function ProductCard({ listing }: { listing: FullListing }) {
+export default function ProductCard({ listing }: { listing: Product }) {
   const colorHex = COLORS[listing.colorIds[0]].hex;
   return (
     <Link
