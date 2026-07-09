@@ -1,6 +1,26 @@
 // Tipe bersama untuk payload API backend Go (../backend).
 // Kontraknya didokumentasikan di ../backend/DATABASE.md dan WORKFLOW.md.
 
+// Produk katalog dari GET /api/products — bentuknya sama dengan FullListing
+// statis di lib/data.ts, ditambah field yang hanya ada di database.
+export type Product = {
+  id: string;
+  designId: string;
+  type: "kaos" | "hoodie" | "mug" | "totebag";
+  price: number;
+  sold: number;
+  rating: number;
+  badge?: string;
+  title: string;
+  designUri: string;
+  designerName: string;
+  designerId: string;
+  typeLabel: string;
+  sizes: string[];
+  colorIds: string[];
+  tags: string[];
+};
+
 export type TrackEvent = {
   id: number;
   t: number; // epoch ms

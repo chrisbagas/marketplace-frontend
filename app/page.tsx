@@ -2,6 +2,8 @@ import Link from "next/link";
 import Mockup from "@/components/Mockup";
 import ProductCard from "@/components/ProductCard";
 import { ALL_LISTINGS, DESIGNERS, COLORS, listingById } from "@/lib/data";
+import { getProducts } from "@/lib/api";
+import type { Product } from "@/lib/types";
 import { compact } from "@/lib/format";
 
 const CATEGORIES = [
@@ -11,12 +13,14 @@ const CATEGORIES = [
   { type: "totebag", label: "Totebag", emoji: "👜" },
 ];
 
-export default function HomePage() {
-  const trending = [...ALL_LISTINGS].sort((a, b) => b.sold - a.sold).slice(0, 8);
+export default async function HomePage() {
+  // tren dari database; fallback ke seed statis bila backend belum jalan
+  const listings: Product[] = await getProducts().catch(() => ALL_LISTINGS);
+  const trending = [...listings].sort((a, b) => b.sold - a.sold).slice(0, 8);
   const heroA = listingById("kaos-anak-senja")!;
   const heroB = listingById("mug-kopi-dulu")!;
   const heroC = listingById("totebag-kawung")!;
-  const totalSold = ALL_LISTINGS.reduce((a, l) => a + l.sold, 0);
+  const totalSold = listings.reduce((a, l) => a + l.sold, 0);
 
   return (
     <div>
