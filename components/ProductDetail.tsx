@@ -5,6 +5,7 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import Mockup, { PHOTO_CREDIT, photoInfo, viewsFor, type MockupView } from "@/components/Mockup";
 import ProductCard from "@/components/ProductCard";
+import SizeGuide from "@/components/SizeGuide";
 import { COLORS, designerById } from "@/lib/data";
 import type { Product, Review } from "@/lib/types";
 import { addToCart } from "@/lib/cart";
@@ -145,6 +146,7 @@ export default function ProductDetail({ listing, related }: { listing: Product; 
                 </button>
               ))}
             </div>
+            <SizeGuide type={listing.type} />
           </div>
 
           <div className="mt-6 flex items-center gap-3">
