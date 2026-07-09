@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import { PRODUCT_TYPES } from "@/lib/data";
-import { getProducts } from "@/lib/api";
+import { getCategories, getProducts, type Category } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { track } from "@/lib/track";
 
@@ -23,20 +23,26 @@ const SORTS = [
 function Catalog() {
   const params = useSearchParams();
   const [type, setType] = useState<string>(params.get("type") ?? "semua");
+  const [category, setCategory] = useState<string>(params.get("category") ?? "semua");
   const [query, setQuery] = useState(params.get("q") ?? "");
   const [q, setQ] = useState(params.get("q") ?? ""); // kata kunci yang benar-benar dicari
   const [sort, setSort] = useState("populer");
   const [products, setProducts] = useState<Product[] | null>(null);
+  const [cats, setCats] = useState<Category[]>([]);
   const [error, setError] = useState(false);
 
-  // katalog datang dari backend (PostgreSQL) — filter jenis & pencarian di server
+  useEffect(() => {
+    getCategories().then(setCats).catch(() => {});
+  }, []);
+
+  // katalog datang dari backend (PostgreSQL) — filter jenis, kategori & pencarian di server
   useEffect(() => {
     let alive = true;
-    getProducts({ type, q })
+    getProducts({ type, q, category })
       .then((list) => alive && (setProducts(list), setError(false)))
       .catch(() => alive && setError(true));
     return () => { alive = false; };
-  }, [type, q]);
+  }, [type, q, category]);
 
   const items = useMemo(() => {
     const list = [...(products ?? [])];
@@ -94,6 +100,32 @@ function Catalog() {
           </button>
         ))}
       </div>
+
+      {cats.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-ink/40">Kategori</span>
+          <button
+            onClick={() => setCategory("semua")}
+            className={`chip border transition ${
+              category === "semua" ? "border-ink bg-ink text-white" : "border-ink/12 bg-white text-ink/70 hover:border-ink/30"
+            }`}
+          >
+            Semua
+          </button>
+          {cats.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => { setCategory(c.id); track("click", { label: `kategori-${c.id}`, page: "/products" }); }}
+              className={`chip border transition ${
+                category === c.id ? "border-ink bg-ink text-white" : "border-ink/12 bg-white text-ink/70 hover:border-ink/30"
+              }`}
+              title={`${c.count} produk`}
+            >
+              {c.emoji} {c.label}{c.count > 0 && <span className="ml-1 opacity-60">{c.count}</span>}
+            </button>
+          ))}
+        </div>
+      )}
 
       {error ? (
         <div className="card mt-8 p-12 text-center text-ink/55">

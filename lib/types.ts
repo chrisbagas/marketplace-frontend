@@ -19,6 +19,7 @@ export type Product = {
   sizes: string[];
   colorIds: string[];
   tags: string[];
+  categories?: string[];
 };
 
 export type TrackEvent = {
@@ -69,6 +70,9 @@ export type DesignSubmission = {
   uri: string;
   status: "review" | "disetujui" | "ditolak";
   note?: string;
+  tags?: string[];
+  categories?: string[];
+  listingId?: string; // terisi setelah disetujui → tayang di katalog
 };
 
 export type DayStat = {

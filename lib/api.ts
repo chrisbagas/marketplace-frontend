@@ -15,6 +15,14 @@ export async function getProducts(params: { type?: string; q?: string; category?
   return (await res.json()).products;
 }
 
+export type Category = { id: string; label: string; emoji: string; count: number };
+
+export async function getCategories(): Promise<Category[]> {
+  const res = await fetch(`${API_BASE}/api/categories`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`GET /api/categories ${res.status}`);
+  return (await res.json()).categories;
+}
+
 export async function getProduct(id: string): Promise<Product | null> {
   const res = await fetch(`${API_BASE}/api/products/${id}`, { cache: "no-store" });
   if (res.status === 404) return null;
