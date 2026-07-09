@@ -21,6 +21,7 @@ export type Product = {
   colorIds: string[];
   tags: string[];
   categories?: string[];
+  active?: boolean;
 };
 
 export type TrackEvent = {
