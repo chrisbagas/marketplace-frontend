@@ -60,16 +60,31 @@ export default function StudioPage() {
   function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 1_000_000) {
-      setError("File terlalu besar — maksimal 1 MB untuk prototipe ini.");
+    if (file.size > 4_000_000) {
+      setError("File terlalu besar — maksimal 4 MB.");
       return;
     }
     setError("");
     const reader = new FileReader();
-    reader.onload = () => {
-      setDesignUri(String(reader.result));
+    reader.onload = async () => {
+      const dataUrl = String(reader.result);
+      setDesignUri(dataUrl); // pratinjau instan selagi diunggah
       setTitle(file.name.replace(/\.[^.]+$/, ""));
       track("click", { label: "studio-upload" });
+      // simpan ke server (folder uploads/ backend) supaya database hanya
+      // menyimpan URL, bukan data gambar raksasa
+      try {
+        const res = await fetch("/api/uploads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: file.name, uri: dataUrl }),
+        });
+        const data = await res.json();
+        if (res.ok && data.url) setDesignUri(data.url);
+        else setError(data.error ?? "Gagal mengunggah — pratinjau tetap jalan, tapi tidak tersimpan di server.");
+      } catch {
+        setError("Server upload tidak terjangkau — pratinjau tetap jalan dari file lokal.");
+      }
     };
     reader.readAsDataURL(file);
   }
@@ -126,7 +141,7 @@ export default function StudioPage() {
               ))}
             </div>
             <button onClick={() => fileRef.current?.click()} className="btn-secondary btn-sm mt-3 w-full">
-              ⬆ Unggah karyamu (PNG/JPG/SVG, maks 1 MB)
+              ⬆ Unggah karyamu (PNG/JPG/WebP/SVG, maks 4 MB)
             </button>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onUpload} />
           </section>
