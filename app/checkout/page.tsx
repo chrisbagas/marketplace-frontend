@@ -23,7 +23,25 @@ export default function CheckoutPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => setItems(getCart()), []);
+  useEffect(() => {
+    setItems(getCart());
+    // isi otomatis dari profil tersimpan (bisa diubah di halaman Profil)
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then(({ profile }) => {
+        if (!profile) return;
+        setForm((f) => ({
+          name: f.name || (profile.name === "Pelanggan Demo" ? "" : profile.name),
+          email: f.email || profile.email || "",
+          phone: f.phone || profile.phone || "",
+          address: f.address || profile.address || "",
+          city: f.city || profile.city || "",
+        }));
+        const pref = COURIERS.find((c) => c.id === profile.preferredCourier);
+        if (pref) setCourier(pref);
+      })
+      .catch(() => {});
+  }, []);
 
   if (items === null) return <div className="mx-auto max-w-4xl px-4 py-16" />;
 
@@ -75,6 +93,9 @@ export default function CheckoutPage() {
         <div className="space-y-6">
           <section className="card p-5">
             <p className="font-bold">Alamat pengiriman</p>
+            <p className="mt-0.5 text-xs text-ink/45">
+              Terisi otomatis dari <Link href="/profile" className="font-semibold text-jade-700 hover:underline">profilmu</Link> — simpan di sana agar tak perlu mengetik ulang.
+            </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="label" htmlFor="name">Nama lengkap *</label>
