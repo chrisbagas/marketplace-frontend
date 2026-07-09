@@ -1,6 +1,7 @@
 import Link from "next/link";
+import Avatar from "./Avatar";
 import Mockup from "./Mockup";
-import { COLORS } from "@/lib/data";
+import { COLORS, designerById } from "@/lib/data";
 import type { Product } from "@/lib/types";
 import { rupiah, compact } from "@/lib/format";
 
@@ -25,7 +26,15 @@ export default function ProductCard({ listing }: { listing: Product }) {
       <div className="space-y-1 p-4">
         <p className="text-xs font-semibold text-jade-700">{listing.typeLabel}</p>
         <h3 className="truncate font-semibold">{listing.title}</h3>
-        <p className="text-xs text-ink/55">oleh {listing.designerName}</p>
+        <p className="flex items-center gap-1.5 text-xs text-ink/55">
+          <Avatar
+            uri={listing.designerAvatar}
+            name={listing.designerName}
+            hue={designerById(listing.designerId)?.hue ?? 152}
+            size={16}
+          />
+          oleh {listing.designerName}
+        </p>
         <div className="flex items-center justify-between pt-1">
           <span className="font-bold">{rupiah(listing.price)}</span>
           <span className="text-xs text-ink/55">★ {listing.rating} · {compact(listing.sold)} terjual</span>

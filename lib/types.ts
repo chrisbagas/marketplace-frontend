@@ -15,6 +15,7 @@ export type Product = {
   designUri: string;
   designerName: string;
   designerId: string;
+  designerAvatar?: string;
   typeLabel: string;
   sizes: string[];
   colorIds: string[];
