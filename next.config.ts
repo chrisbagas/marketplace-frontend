@@ -6,7 +6,10 @@ const API_URL = process.env.API_URL ?? "http://localhost:8081";
 
 const nextConfig: NextConfig = {
   async rewrites() {
-    return [{ source: "/api/:path*", destination: `${API_URL}/api/:path*` }];
+    return [
+      { source: "/api/:path*", destination: `${API_URL}/api/:path*` },
+      { source: "/uploads/:path*", destination: `${API_URL}/uploads/:path*` }, // gambar desain tersimpan
+    ];
   },
 };
 
