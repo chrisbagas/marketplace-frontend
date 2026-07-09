@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -48,8 +48,8 @@ export default function DesignerDashboard() {
             {ME.name[0]}
           </div>
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight">Halo, {ME.name.split(" ")[0]} ðŸ‘‹</h1>
-            <p className="text-sm text-ink/55">Studio Kreator Â· {ME.city} Â· {compact(ME.followers)} pengikut</p>
+            <h1 className="text-2xl font-extrabold tracking-tight">Halo, {ME.name.split(" ")[0]} 👋</h1>
+            <p className="text-sm text-ink/55">Studio Kreator · {ME.city} · {compact(ME.followers)} pengikut</p>
           </div>
         </div>
         <Link href="/designer/studio" className="btn-primary" data-track="buka-studio">
@@ -61,12 +61,12 @@ export default function DesignerDashboard() {
         <StatTile label="Saldo royalti (14 hari)" value={rupiah(balance)} delta={((recent - prev) / prev) * 100} spark={spark} />
         <StatTile label="Total produk terjual" value={compact(totalSold)} />
         <StatTile label="Desain aktif" value={String(myListings.length + subs.filter((s) => s.status === "disetujui").length)} />
-        <StatTile label="Rating tokomu" value={`â˜… ${ME.rating}`} />
+        <StatTile label="Rating tokomu" value={`★ ${ME.rating}`} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="card p-5" style={{ background: "var(--viz-surface)" }}>
-          <p className="font-bold">Royalti harian â€” 14 hari terakhir</p>
+          <p className="font-bold">Royalti harian — 14 hari terakhir</p>
           <p className="mb-3 text-xs" style={{ color: "var(--viz-ink-2)" }}>Estimasi {Math.round(ROYALTY_SHARE * 100)}% dari harga jual setiap item</p>
           {royalty.length > 1 && (
             <LineChart points={royalty} format={rupiah} compactFormat={(v) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)}jt` : `${Math.round(v / 1000)}rb`)} />
@@ -77,11 +77,11 @@ export default function DesignerDashboard() {
           <p className="font-bold">Penarikan dana</p>
           <p className="mt-2 text-2xl font-extrabold text-jade-800">{rupiah(balance)}</p>
           <p className="text-xs text-ink/50">tersedia untuk ditarik</p>
-          <button className="btn-secondary btn-sm mt-4 w-full" onClick={() => alert("Demo: penarikan dana ke rekening BCA â€¢â€¢â€¢â€¢ 4521 diproses 1â€“2 hari kerja.")}>
-            Tarik ke BCA â€¢â€¢â€¢â€¢ 4521
+          <button className="btn-secondary btn-sm mt-4 w-full" onClick={() => alert("Demo: penarikan dana ke rekening BCA •••• 4521 diproses 1–2 hari kerja.")}>
+            Tarik ke BCA •••• 4521
           </button>
           <div className="mt-4 border-t border-ink/8 pt-3 text-xs text-ink/55">
-            <p>ðŸ’¡ Tips: desain bertema <b>senja</b> dan <b>batik</b> sedang naik 30% pencariannya minggu ini.</p>
+            <p>💡 Tips: desain bertema <b>senja</b> dan <b>batik</b> sedang naik 30% pencariannya minggu ini.</p>
           </div>
         </div>
       </div>
@@ -92,7 +92,7 @@ export default function DesignerDashboard() {
         <p className="text-sm text-ink/55">Desain dari Studio Mockup menunggu kurasi tim KaryaKita.</p>
         {subs.length === 0 ? (
           <div className="card mt-4 p-8 text-center text-sm text-ink/55">
-            Belum ada pengajuan. <Link href="/designer/studio" className="font-bold text-jade-700 hover:underline">Buat di Studio Mockup â†’</Link>
+            Belum ada pengajuan. <Link href="/designer/studio" className="font-bold text-jade-700 hover:underline">Buat di Studio Mockup →</Link>
           </div>
         ) : (
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -106,7 +106,7 @@ export default function DesignerDashboard() {
                     <p className="truncate text-sm font-semibold">{s.title}</p>
                     <span className={`chip shrink-0 ${STATUS_CHIP[s.status]}`}>{s.status === "review" ? "Direview" : s.status}</span>
                   </div>
-                  <p className="mt-1 text-xs text-ink/50">{rupiah(s.price)} Â· {timeAgo(s.t)}</p>
+                  <p className="mt-1 text-xs text-ink/50">{rupiah(s.price)} · {timeAgo(s.t)}</p>
                   {s.note && <p className="mt-1 text-xs text-coral-600">Catatan: {s.note}</p>}
                 </div>
               </div>
@@ -142,7 +142,7 @@ export default function DesignerDashboard() {
                   </td>
                   <td className="p-3">{rupiah(l.price)}</td>
                   <td className="p-3">{compact(l.sold)}</td>
-                  <td className="p-3">â˜… {l.rating}</td>
+                  <td className="p-3">★ {l.rating}</td>
                   <td className="p-3 font-semibold text-jade-800">{rupiah(l.sold * l.price * ROYALTY_SHARE)}</td>
                 </tr>
               ))}
