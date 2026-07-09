@@ -77,6 +77,31 @@ export type DesignSubmission = {
   listingId?: string; // terisi setelah disetujui → tayang di katalog
 };
 
+export type Profile = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  preferredPayment: string;
+  preferredCourier: string;
+  settings: Record<string, unknown>;
+};
+
+// Desain custom milik pembeli: hanya untuk dipakai sendiri (tidak dijual,
+// tanpa royalti — item pesanannya tidak terhubung ke listing mana pun).
+export type UserDesign = {
+  id: number;
+  t: number;
+  title: string;
+  type: string;
+  color: string;
+  uri: string;
+  widthCm: number;
+  offsetYCm: number;
+};
+
 export type Review = {
   id: number;
   t: number;

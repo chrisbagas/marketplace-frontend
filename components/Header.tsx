@@ -7,6 +7,7 @@ import { cartCount } from "@/lib/cart";
 
 const NAV = [
   { href: "/products", label: "Jelajah" },
+  { href: "/studio", label: "Custom" },
   { href: "/designer", label: "Studio Kreator" },
   { href: "/admin", label: "Admin" },
 ];
@@ -52,6 +53,15 @@ export default function Header() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
+          <Link
+            href="/profile"
+            className={`rounded-full border p-2.5 transition ${pathname.startsWith("/profile") ? "border-jade-700 bg-jade-700 text-white" : "border-ink/12 bg-white hover:border-ink/30"}`}
+            aria-label="Profil saya"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+            </svg>
+          </Link>
           <Link
             href="/cart"
             className="relative rounded-full border border-ink/12 bg-white p-2.5 transition hover:border-ink/30"
