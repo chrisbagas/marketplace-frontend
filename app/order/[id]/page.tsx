@@ -15,6 +15,71 @@ const STEPS: { key: Order["status"]; label: string; icon: string }[] = [
   { key: "selesai", label: "Selesai", icon: "🎉" },
 ];
 
+function ReviewForm({ orderId, listingId, title }: { orderId: string; listingId: string; title: string }) {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [state, setState] = useState<"idle" | "busy" | "sent">("idle");
+  const [error, setError] = useState("");
+
+  async function submit() {
+    setState("busy");
+    setError("");
+    const res = await fetch("/api/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId, listingId, rating, comment }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "Gagal mengirim ulasan");
+      setState("idle");
+      return;
+    }
+    setState("sent");
+  }
+
+  if (state === "sent") {
+    return (
+      <div className="rounded-xl bg-jade-50 p-3 text-sm">
+        <p className="font-semibold text-jade-800">✓ Ulasan untuk “{title}” terkirim!</p>
+        <p className="text-xs text-ink/55">Menunggu moderasi admin sebelum tayang.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-ink/8 p-3">
+      <p className="text-sm font-semibold">{title}</p>
+      <div className="mt-2 flex items-center gap-3">
+        <div className="flex" role="radiogroup" aria-label="Rating">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              onClick={() => setRating(n)}
+              aria-label={`${n} bintang`}
+              className={`px-0.5 text-xl transition ${n <= rating ? "text-sun-500" : "text-ink/20 hover:text-sun-300"}`}
+            >
+              ★
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-ink/50">{rating}/5</span>
+      </div>
+      <textarea
+        className="input mt-2 h-20 resize-none text-sm"
+        placeholder="Ceritakan kualitas cetak, bahan, atau pengirimannya… (opsional)"
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        maxLength={1000}
+      />
+      {error && <p className="mt-1 text-xs font-semibold text-coral-600">{error}</p>}
+      <button onClick={submit} disabled={state === "busy"} className="btn-primary btn-sm mt-2" data-track="kirim-ulasan">
+        {state === "busy" ? "Mengirim…" : "Kirim ulasan"}
+      </button>
+    </div>
+  );
+}
+
 export default function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [order, setOrder] = useState<Order | null>(null);
@@ -90,6 +155,20 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
           </button>
         )}
       </div>
+
+      {order.status === "selesai" && (
+        <div className="card mt-6 p-5">
+          <p className="font-bold">Nilai pesananmu ⭐</p>
+          <p className="mt-0.5 text-xs text-ink/55">
+            Ulasanmu membantu pembeli lain — tayang di halaman produk setelah dimoderasi.
+          </p>
+          <div className="mt-4 space-y-4">
+            {order.items.filter((it) => !it.productId.startsWith("custom")).map((it, i) => (
+              <ReviewForm key={i} orderId={order.id} listingId={it.productId} title={it.title} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 grid gap-6 md:grid-cols-2">
         <div className="card p-5">

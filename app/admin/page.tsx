@@ -5,7 +5,7 @@ import Mockup from "@/components/Mockup";
 import { StatTile, LineChart, HBarList, Funnel, VitalTile } from "@/components/charts";
 import { COLORS } from "@/lib/data";
 import { rupiah, compact, timeAgo, fmtDate } from "@/lib/format";
-import type { DesignSubmission } from "@/lib/types";
+import type { DesignSubmission, Review } from "@/lib/types";
 
 type Stats = {
   days: { date: string; visits: number; productViews: number; addToCart: number; checkout: number; paid: number; revenue: number }[];
@@ -48,14 +48,17 @@ export default function AdminPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Ringkasan");
   const [stats, setStats] = useState<Stats | null>(null);
   const [pending, setPending] = useState<DesignSubmission[]>([]);
+  const [pendingReviews, setPendingReviews] = useState<Review[]>([]);
 
   const load = useCallback(async () => {
-    const [s, d] = await Promise.all([
+    const [s, d, rv] = await Promise.all([
       fetch("/api/stats").then((r) => r.json()),
       fetch("/api/designs?status=review").then((r) => r.json()),
+      fetch("/api/reviews?status=review").then((r) => r.json()),
     ]);
     setStats(s);
     setPending(d.designs ?? []);
+    setPendingReviews(rv.reviews ?? []);
   }, []);
 
   useEffect(() => {
@@ -69,6 +72,15 @@ export default function AdminPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status, note: status === "ditolak" ? "Kualitas gambar kurang tajam untuk cetak A3." : undefined }),
+    });
+    load();
+  }
+
+  async function moderateReview(id: number, status: "disetujui" | "ditolak") {
+    await fetch("/api/reviews", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status, note: status === "ditolak" ? "Melanggar pedoman komentar." : undefined }),
     });
     load();
   }
@@ -104,8 +116,8 @@ export default function AdminPage() {
             className={`chip border transition ${tab === t ? "border-jade-700 bg-jade-700 text-white" : "border-ink/12 bg-white text-ink/60 hover:border-ink/30"}`}
           >
             {t}
-            {t === "Moderasi" && pending.length > 0 && (
-              <span className="ml-1 rounded-full bg-coral-500 px-1.5 text-[10px] font-bold text-white">{pending.length}</span>
+            {t === "Moderasi" && pending.length + pendingReviews.length > 0 && (
+              <span className="ml-1 rounded-full bg-coral-500 px-1.5 text-[10px] font-bold text-white">{pending.length + pendingReviews.length}</span>
             )}
           </button>
         ))}
@@ -282,6 +294,33 @@ export default function AdminPage() {
                       <button onClick={() => moderate(d.id, "disetujui")} className="btn-primary btn-sm flex-1">✓ Setujui</button>
                       <button onClick={() => moderate(d.id, "ditolak")} className="btn-secondary btn-sm flex-1 text-coral-600">✕ Tolak</button>
                     </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <h2 className="mt-10 text-lg font-extrabold tracking-tight">Ulasan pembeli</h2>
+          <p className="text-sm text-ink/55">Ulasan hanya tayang di halaman produk setelah disetujui di sini.</p>
+          {pendingReviews.length === 0 ? (
+            <div className="card mt-4 p-8 text-center text-sm text-ink/55">
+              Tidak ada ulasan menunggu moderasi. Pembeli bisa menilai setelah pesanannya <b>selesai</b>.
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {pendingReviews.map((rv) => (
+                <div key={rv.id} className="card flex flex-wrap items-center gap-4 p-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm">
+                      <span className="font-semibold">{rv.author}</span>
+                      <span className="ml-2 text-sun-500">{"★".repeat(rv.rating)}{"☆".repeat(5 - rv.rating)}</span>
+                      <span className="ml-2 text-xs text-ink/45">{rv.listingId} · pesanan {rv.orderId} · {timeAgo(rv.t)}</span>
+                    </p>
+                    <p className="mt-1 text-sm text-ink/70">{rv.comment || <em className="text-ink/40">tanpa komentar</em>}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => moderateReview(rv.id, "disetujui")} className="btn-primary btn-sm">✓ Setujui</button>
+                    <button onClick={() => moderateReview(rv.id, "ditolak")} className="btn-secondary btn-sm text-coral-600">✕ Tolak</button>
                   </div>
                 </div>
               ))}
