@@ -3,7 +3,7 @@
 Marketplace **print-on-demand (POD)** untuk pasar Indonesia — seperti Redbubble/Etsy, tapi dengan
 pembayaran lokal (QRIS, e-wallet, virtual account), Bahasa Indonesia, dan Rupiah.
 
-> **Status: prototipe berfungsi penuh, tanpa login.** Data tersimpan di **PostgreSQL**
+> **Status: prototipe berfungsi penuh, dengan login & peran.** Data tersimpan di **PostgreSQL**
 > lewat backend terpisah (Go). Bagian [Menuju Produksi](#menuju-produksi) menjelaskan apa
 > yang masih perlu diganti untuk go-live.
 
@@ -35,13 +35,25 @@ Tech stack:
 
 ## Tiga peran, tiga area
 
-Karena prototipe ini tanpa login, semua area terbuka dan bisa diakses dari header:
+| Peran | URL | Akses | Fungsi |
+|---|---|---|---|
+| **Tamu / Pelanggan** | `/`, `/products`, `/product/[id]`, `/cart`, `/checkout`, `/order/[id]` | publik (guest checkout boleh) | Belanja end-to-end |
+| **Pelanggan** | `/profile`, `/studio` | login | Profil, desain custom pribadi |
+| **Kreator / Toko** | `/designer`, `/designer/studio` | kreator, admin | Dashboard royalti + Studio Mockup |
+| **Admin** | `/admin` | admin | Analitik, perilaku pelanggan, performa, moderasi |
 
-| Peran | URL | Fungsi |
-|---|---|---|
-| **Pelanggan** | `/`, `/products`, `/product/[id]`, `/cart`, `/checkout`, `/order/[id]` | Belanja end-to-end |
-| **Kreator / Toko** | `/designer`, `/designer/studio` | Dashboard royalti + Studio Mockup |
-| **Admin** | `/admin` | Analitik, perilaku pelanggan, performa, moderasi |
+### Autentikasi
+
+- **Masuk** (`/login`) dengan username **atau** email + password; **Daftar** (`/signup`) sebagai
+  pembeli atau kreator (kreator langsung mendapat profil toko). Tombol **Google** aktif otomatis
+  bila backend punya kredensial OAuth (`GOOGLE_*` di `../backend/.env.example`).
+- Sesi = cookie HttpOnly `kk_session` dari backend; `lib/auth.ts` (`useSession`, `login`,
+  `signup`, `logout`) membaca status lewat `GET /api/auth/me`.
+- **`middleware.ts`** menjaga halaman sebelum dirender: tanpa sesi → `/login?next=…`, peran tidak
+  cocok → `/login?next=…&alasan=peran`. Aturan per halaman ada di `lib/access.ts` (`PROTECTED`).
+  Ini lapisan UX — backend tetap memeriksa sesi & peran di setiap endpoint.
+- Header menampilkan menu sesuai peran + menu akun (profil, dashboard, keluar).
+- Akun demo (dev): `admin`, `raka` (kreator), `demo` (pelanggan) — password `karyakita123`.
 
 ---
 
@@ -141,7 +153,8 @@ components/Monitor.tsx
 
 | Endpoint | Method | Fungsi |
 |---|---|---|
-| `/api/orders` | `POST` / `GET` | Buat pesanan / daftar pesanan |
+| `/api/auth/*` | `POST` / `GET` | `signup`, `login`, `logout`, `me`, `providers`, `google/start`, `google/callback` |
+| `/api/orders` | `POST` / `GET` | Buat pesanan (guest/login) / daftar pesanan (admin) |
 | `/api/orders/[id]` | `GET` / `PATCH` | Detail / `{action:"pay"}` (≈ webhook gateway; juga membukukan **royalti kreator** + counter terjual), `{action:"advance"}` (simulasi produksi) |
 | `/api/designs` | `GET` / `POST` / `PATCH` | Daftar / ajukan desain / moderasi (`disetujui`/`ditolak`) |
 | `/api/track` | `POST` / `GET` | Rekam / baca event perilaku |
@@ -163,6 +176,7 @@ frontend/  (repo ini — Next.js)
     designer/             dashboard kreator
     designer/studio/      Studio Mockup (pratinjau di model)
     admin/                dashboard admin (4 tab)
+    login/  signup/       masuk & daftar (password + tombol Google)
   components/
     Mockup.tsx            mesin mockup SVG (flat + model) ★
     PaymentModal.tsx      gateway pembayaran mock ala Midtrans Snap ★
@@ -172,7 +186,9 @@ frontend/  (repo ini — Next.js)
   lib/
     data.ts  designs.ts   katalog produk & karya seed (SVG data-URI)
     types.ts              tipe payload API (kontrak dengan backend)
+    auth.ts  access.ts    sesi login (useSession) + aturan akses halaman
     cart.ts  track.ts  format.ts
+  middleware.ts           penjaga halaman terlindungi (cek sesi & peran)
   next.config.ts          proxy /api/* → backend Go
 
 backend/  (repo terpisah — Go + PostgreSQL)
@@ -191,9 +207,9 @@ Prototipe ini sengaja meniru kontrak layanan aslinya, jadi penggantiannya terlok
 
 | Sekarang (prototipe) | Produksi |
 |---|---|
-| ~~In-memory store~~ → **sudah PostgreSQL** (backend Go, 20 tabel + royalti) | Tambah backup, connection pooling (pgbouncer), migrasi bertahap (golang-migrate/atlas) |
+| ~~In-memory store~~ → **sudah PostgreSQL** (backend Go, 25 tabel + royalti) | Tambah backup, connection pooling (pgbouncer), migrasi bertahap (golang-migrate/atlas) |
 | `PaymentModal.tsx` mock | **Midtrans Snap** atau **Xendit Invoice**; `PATCH {action:"pay"}` → webhook `payment/notification` dengan verifikasi signature |
-| Tanpa login | Auth (NextAuth/Clerk) + role `customer / designer / admin`, proteksi route `/admin` & `/designer` |
+| ~~Tanpa login~~ → **sudah ada** login password + sesi + peran, Google siap pakai | Isi kredensial Google, verifikasi email & lupa password (butuh layanan email), `APP_ENV=production` (cookie Secure, tanpa akun demo) |
 | Ongkir flat 3 kurir | API **RajaOngkir/Biteship** (tarif real per kota + resi otomatis) |
 | Upload desain → data-URL | Object storage (S3/R2) + validasi resolusi cetak (300 DPI pada lebar cm yang dipilih, CMYK-safe) |
 | Event & vitals di tabel PostgreSQL | PostHog / Plausible (perilaku) + Sentry / Grafana (performa & error), atau pertahankan tabel + job agregasi harian |

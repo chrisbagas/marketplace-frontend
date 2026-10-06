@@ -123,3 +123,25 @@ export type DayStat = {
   paid: number;
   revenue: number;
 };
+
+// Pengguna yang sedang login — GET /api/auth/me (backend internal/api/auth.go)
+export type Role = "customer" | "designer" | "admin";
+
+export type SessionUser = {
+  id: string;
+  username: string;
+  email: string;
+  name: string;
+  role: Role;
+  hasPassword: boolean;
+  googleLinked: boolean;
+  designer?: {
+    id: string;
+    name: string;
+    city: string;
+    hue: number;
+    followers: number;
+    rating: number;
+    avatarUri: string;
+  };
+};

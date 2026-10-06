@@ -1,19 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { cartCount } from "@/lib/cart";
+import { canAccess, logout, ROLE_LABEL, useSession } from "@/lib/auth";
+import type { SessionUser } from "@/lib/types";
 
-const NAV = [
-  { href: "/products", label: "Jelajah" },
-  { href: "/studio", label: "Custom" },
-  { href: "/designer", label: "Studio Kreator" },
-  { href: "/admin", label: "Admin" },
-];
+// Menu tampil sesuai peran: tamu melihat ajakan jadi kreator,
+// kreator/admin melihat dashboard-nya.
+const navFor = (user: SessionUser | null) =>
+  [
+    { href: "/products", label: "Jelajah" },
+    { href: "/studio", label: "Custom" },
+    !user && { href: "/signup?peran=kreator", label: "Jadi Kreator", match: "/signup" },
+    canAccess(user, "/designer") && { href: "/designer", label: "Studio Kreator" },
+    canAccess(user, "/admin") && { href: "/admin", label: "Admin" },
+  ].filter(Boolean) as { href: string; label: string; match?: string }[];
 
 export default function Header() {
   const pathname = usePathname();
+  const { user, loading } = useSession();
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -37,12 +44,12 @@ export default function Header() {
         </Link>
 
         <nav className="hidden items-center gap-1 sm:flex">
-          {NAV.map((n) => (
+          {navFor(user).map((n) => (
             <Link
               key={n.href}
               href={n.href}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                pathname.startsWith(n.href)
+                pathname.startsWith(n.match ?? n.href)
                   ? "bg-jade-700 text-white"
                   : "text-ink/70 hover:bg-ink/5 hover:text-ink"
               }`}
@@ -53,15 +60,19 @@ export default function Header() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          <Link
-            href="/profile"
-            className={`rounded-full border p-2.5 transition ${pathname.startsWith("/profile") ? "border-jade-700 bg-jade-700 text-white" : "border-ink/12 bg-white hover:border-ink/30"}`}
-            aria-label="Profil saya"
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-            </svg>
-          </Link>
+          {loading ? (
+            <span className="h-10 w-10 animate-pulse rounded-full bg-ink/5" />
+          ) : user ? (
+            <AccountMenu user={user} active={pathname.startsWith("/profile")} />
+          ) : (
+            <Link
+              href={`/login${pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/signup") ? "" : `?next=${encodeURIComponent(pathname)}`}`}
+              className="btn-primary btn-sm"
+              data-track="header-masuk"
+            >
+              Masuk
+            </Link>
+          )}
           <Link
             href="/cart"
             className="relative rounded-full border border-ink/12 bg-white p-2.5 transition hover:border-ink/30"
@@ -80,5 +91,76 @@ export default function Header() {
         </div>
       </div>
     </header>
+  );
+}
+
+function AccountMenu({ user, active }: { user: SessionUser; active: boolean }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+
+  async function signOut() {
+    setOpen(false);
+    await logout();
+    router.push("/");
+    router.refresh();
+  }
+
+  const initial = (user.name || user.username).trim().charAt(0).toUpperCase();
+  const links = [
+    { href: "/profile", label: "Profil & desain saya" },
+    canAccess(user, "/designer") && { href: "/designer", label: "Studio Kreator" },
+    canAccess(user, "/admin") && { href: "/admin", label: "Dashboard admin" },
+  ].filter(Boolean) as { href: string; label: string }[];
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-3 transition ${active || open ? "border-jade-700 bg-jade-50" : "border-ink/12 bg-white hover:border-ink/30"}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Menu akun"
+      >
+        {user.designer?.avatarUri ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.designer.avatarUri} alt="" className="h-8 w-8 rounded-full" />
+        ) : (
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-jade-700 text-sm font-bold text-white">{initial}</span>
+        )}
+        <span className="hidden max-w-28 truncate text-sm font-semibold sm:block">{user.name.split(" ")[0] || user.username}</span>
+      </button>
+
+      {open && (
+        <div role="menu" className="absolute right-0 mt-2 w-60 overflow-hidden rounded-2xl border border-ink/10 bg-white shadow-lg">
+          <div className="border-b border-ink/8 px-4 py-3">
+            <p className="truncate text-sm font-bold">{user.name}</p>
+            <p className="truncate text-xs text-ink/55">@{user.username} · {ROLE_LABEL[user.role]}</p>
+          </div>
+          {links.map((l) => (
+            <Link key={l.href} href={l.href} role="menuitem" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-sm hover:bg-ink/5">
+              {l.label}
+            </Link>
+          ))}
+          <button type="button" role="menuitem" onClick={signOut} className="block w-full border-t border-ink/8 px-4 py-2.5 text-left text-sm font-semibold text-coral-600 hover:bg-coral-50" data-track="logout">
+            Keluar
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
