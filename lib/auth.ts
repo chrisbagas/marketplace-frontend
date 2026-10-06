@@ -79,6 +79,25 @@ export async function logout(): Promise<void> {
   set({ user: null, loading: false });
 }
 
+// ---- verifikasi email & reset password ------------------------------------
+
+export async function verifyEmail(token: string): Promise<{ alreadyVerified?: boolean }> {
+  const res = await post<{ alreadyVerified?: boolean }>("/api/auth/verify-email", { token });
+  if (state.user) refreshSession(); // banner verifikasi hilang
+  return res;
+}
+
+export const resendVerification = () => post<{ alreadyVerified?: boolean }>("/api/auth/verify-email/resend");
+
+export const forgotPassword = (email: string) => post<{ message: string }>("/api/auth/password/forgot", { email });
+
+// Berhasil = password baru + langsung masuk (semua sesi lain dicabut backend).
+export async function resetPassword(token: string, password: string): Promise<SessionUser> {
+  const { user } = await post<{ user: SessionUser }>("/api/auth/password/reset", { token, password });
+  set({ user, loading: false });
+  return user;
+}
+
 export async function getProviders(): Promise<{ password: boolean; google: boolean }> {
   try {
     const res = await fetch("/api/auth/providers", { cache: "no-store" });

@@ -52,6 +52,12 @@ Tech stack:
 - **`middleware.ts`** menjaga halaman sebelum dirender: tanpa sesi → `/login?next=…`, peran tidak
   cocok → `/login?next=…&alasan=peran`. Aturan per halaman ada di `lib/access.ts` (`PROTECTED`).
   Ini lapisan UX — backend tetap memeriksa sesi & peran di setiap endpoint.
+- **Verifikasi email** (`/verifikasi-email?token=…`, dari email setelah daftar): banner kuning
+  mengingatkan akun yang belum terverifikasi + tombol kirim ulang. Belanja tetap jalan; kreator
+  wajib terverifikasi sebelum mengajukan desain.
+- **Lupa password** (`/lupa-password`) → email → **`/reset-password?token=…`**: password baru,
+  perangkat lain dikeluarkan, langsung masuk. Halaman ber-token memakai `Referrer-Policy: no-referrer`.
+- Di dev semua email tertangkap di **Mailpit: http://localhost:8025** (bagian dari `docker compose` backend).
 - Header menampilkan menu sesuai peran + menu akun (profil, dashboard, keluar).
 - Akun demo (dev): `admin`, `raka` (kreator), `demo` (pelanggan) — password `karyakita123`.
 
@@ -153,7 +159,7 @@ components/Monitor.tsx
 
 | Endpoint | Method | Fungsi |
 |---|---|---|
-| `/api/auth/*` | `POST` / `GET` | `signup`, `login`, `logout`, `me`, `providers`, `google/start`, `google/callback` |
+| `/api/auth/*` | `POST` / `GET` | `signup`, `login`, `logout`, `me`, `providers`, `verify-email`, `verify-email/resend`, `password/forgot`, `password/reset`, `google/start`, `google/callback` |
 | `/api/orders` | `POST` / `GET` | Buat pesanan (guest/login) / daftar pesanan (admin) |
 | `/api/orders/[id]` | `GET` / `PATCH` | Detail / `{action:"pay"}` (≈ webhook gateway; juga membukukan **royalti kreator** + counter terjual), `{action:"advance"}` (simulasi produksi) |
 | `/api/designs` | `GET` / `POST` / `PATCH` | Daftar / ajukan desain / moderasi (`disetujui`/`ditolak`) |
@@ -177,6 +183,8 @@ frontend/  (repo ini — Next.js)
     designer/studio/      Studio Mockup (pratinjau di model)
     admin/                dashboard admin (4 tab)
     login/  signup/       masuk & daftar (password + tombol Google)
+    verifikasi-email/     tujuan link verifikasi di email
+    lupa-password/  reset-password/   minta link reset → buat password baru
   components/
     Mockup.tsx            mesin mockup SVG (flat + model) ★
     PaymentModal.tsx      gateway pembayaran mock ala Midtrans Snap ★
@@ -209,7 +217,7 @@ Prototipe ini sengaja meniru kontrak layanan aslinya, jadi penggantiannya terlok
 |---|---|
 | ~~In-memory store~~ → **sudah PostgreSQL** (backend Go, 25 tabel + royalti) | Tambah backup, connection pooling (pgbouncer), migrasi bertahap (golang-migrate/atlas) |
 | `PaymentModal.tsx` mock | **Midtrans Snap** atau **Xendit Invoice**; `PATCH {action:"pay"}` → webhook `payment/notification` dengan verifikasi signature |
-| ~~Tanpa login~~ → **sudah ada** login password + sesi + peran, Google siap pakai | Isi kredensial Google, verifikasi email & lupa password (butuh layanan email), `APP_ENV=production` (cookie Secure, tanpa akun demo) |
+| ~~Tanpa login~~ → **sudah ada** login password + sesi + peran + verifikasi email + reset password, Google siap pakai | Isi kredensial Google; SMTP penyedia email (Resend/Brevo/SES) + SPF/DKIM/DMARC di domain; `APP_ENV=production` (cookie Secure, tanpa akun demo) |
 | Ongkir flat 3 kurir | API **RajaOngkir/Biteship** (tarif real per kota + resi otomatis) |
 | Upload desain → data-URL | Object storage (S3/R2) + validasi resolusi cetak (300 DPI pada lebar cm yang dipilih, CMYK-safe) |
 | Event & vitals di tabel PostgreSQL | PostHog / Plausible (perilaku) + Sentry / Grafana (performa & error), atau pertahankan tabel + job agregasi harian |

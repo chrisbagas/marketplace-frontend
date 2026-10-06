@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Monitor from "@/components/Monitor";
+import VerifyBanner from "@/components/VerifyBanner";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans">
         <Monitor />
         <Header />
+        <VerifyBanner />
         <main className="min-h-[70vh]">{children}</main>
         <footer className="mt-20 border-t border-ink/8 bg-white">
           <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:grid-cols-3">

@@ -98,7 +98,12 @@ function LoginForm() {
           />
         </div>
         <div>
-          <label className="label" htmlFor="password">Password</label>
+          <div className="flex items-baseline justify-between">
+            <label className="label" htmlFor="password">Password</label>
+            <Link href="/lupa-password" className="text-xs font-semibold text-jade-700 hover:underline">
+              Lupa password?
+            </Link>
+          </div>
           <PasswordInput id="password" value={password} onChange={setPassword} autoComplete="current-password" />
         </div>
         <FormError message={error} />

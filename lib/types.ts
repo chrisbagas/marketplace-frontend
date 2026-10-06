@@ -133,6 +133,7 @@ export type SessionUser = {
   email: string;
   name: string;
   role: Role;
+  emailVerified: boolean;
   hasPassword: boolean;
   googleLinked: boolean;
   designer?: {

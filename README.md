@@ -23,5 +23,6 @@ Buka **http://localhost:3000**, lalu jelajahi:
 
 Halaman kreator, admin, profil, dan Custom butuh login (`/login`). Akun demo, password
 `karyakita123`: `admin` · `raka` (kreator) · `demo` (pelanggan) — atau daftar baru di `/signup`.
+Email verifikasi & reset password di dev tertangkap di Mailpit: http://localhost:8025.
 
 Dokumentasi alur lengkap: [`WORKFLOW.md`](./WORKFLOW.md).
