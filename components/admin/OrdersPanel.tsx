@@ -1,24 +1,24 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { COLORS } from "@/lib/data";
+import { useRouter } from "next/navigation";
 import { advanceOrder, getAllOrders, ORDER_STATUS, ORDER_STATUSES } from "@/lib/orders";
 import { fmtDate, fmtTime, rupiah } from "@/lib/format";
 import type { Order } from "@/lib/types";
 
 // Tab "Pesanan" di dashboard admin: semua pesanan yang sudah di-checkout,
-// dengan filter status, pencarian, detail pengiriman, dan tombol majukan status.
+// dengan filter status & pencarian. Klik baris → /admin/pesanan/[id].
 
 const PAGE = 20;
 
 export default function OrdersPanel() {
+  const router = useRouter();
   const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
   const [term, setTerm] = useState(""); // q setelah debounce
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState<{ orders: Order[]; total: number } | null>(null);
-  const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -51,6 +51,25 @@ export default function OrdersPanel() {
     }
   }
 
+  // aksi cepat per status; produksi → dikirim selalu lewat halaman detail (wajib resi)
+  const action = (o: Order) => {
+    if (o.status === "dibayar")
+      return (
+        <button onClick={() => advance(o.id)} disabled={busy === o.id} className="btn-secondary btn-sm">
+          {busy === o.id ? "…" : "Mulai produksi"}
+        </button>
+      );
+    if (o.status === "produksi")
+      return <Link href={`/admin/pesanan/${o.id}`} className="btn-primary btn-sm">Input resi →</Link>;
+    if (o.status === "dikirim")
+      return (
+        <button onClick={() => advance(o.id)} disabled={busy === o.id} className="btn-secondary btn-sm">
+          {busy === o.id ? "…" : "Tandai diterima"}
+        </button>
+      );
+    return null;
+  };
+
   return (
     <div className="mt-6 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -82,7 +101,7 @@ export default function OrdersPanel() {
               <th className="p-3 font-semibold">Pelanggan</th>
               <th className="p-3 font-semibold">Item</th>
               <th className="p-3 font-semibold">Total</th>
-              <th className="p-3 font-semibold">Pembayaran</th>
+              <th className="p-3 font-semibold">Pengiriman</th>
               <th className="p-3 font-semibold">Status</th>
               <th className="p-3 font-semibold" />
             </tr>
@@ -90,73 +109,44 @@ export default function OrdersPanel() {
           <tbody>
             {data?.orders.map((o) => {
               const units = o.items.reduce((a, i) => a + i.qty, 0);
-              const canAdvance = o.payment.status === "paid" && o.status !== "selesai";
               return (
-                <Fragment key={o.id}>
-                  <tr className="cursor-pointer border-t border-ink/5 hover:bg-cream/60" onClick={() => setOpen(open === o.id ? null : o.id)}>
-                    <td className="p-3">
-                      <p className="font-semibold">{o.id}</p>
-                      <p className="text-xs text-ink/45">{fmtDate(o.createdAt)} · {fmtTime(o.createdAt)}</p>
-                    </td>
-                    <td className="p-3">
-                      <p className="font-semibold">{o.customer.name}</p>
-                      <p className="text-xs text-ink/45">{o.username ? `@${o.username}` : "guest"} · {o.customer.city}</p>
-                    </td>
-                    <td className="p-3 text-xs text-ink/70">
-                      {units} pcs
-                      <span className="block max-w-48 truncate text-ink/45">{o.items.map((i) => `${i.qty}×${i.size}`).join(", ")}</span>
-                    </td>
-                    <td className="p-3">
-                      <p className="font-bold">{rupiah(o.total)}</p>
-                      {o.discount > 0 && <p className="text-xs text-jade-700">−{rupiah(o.discount)} {o.voucherCode}</p>}
-                    </td>
-                    <td className="p-3 text-xs">
-                      <span className={o.payment.status === "paid" ? "font-semibold text-jade-800" : "text-sun-600"}>
-                        {o.payment.status === "paid" ? "LUNAS" : "MENUNGGU"}
-                      </span>
-                      <span className="block text-ink/45">{o.payment.method}</span>
-                    </td>
-                    <td className="p-3"><span className={`chip text-xs ${ORDER_STATUS[o.status].chip}`}>{ORDER_STATUS[o.status].label}</span></td>
-                    <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      {canAdvance && (
-                        <button onClick={() => advance(o.id)} disabled={busy === o.id} className="btn-secondary btn-sm" data-track="admin-advance">
-                          {busy === o.id ? "…" : "Majukan ▶"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                  {open === o.id && (
-                    <tr className="bg-cream/50">
-                      <td colSpan={7} className="p-4">
-                        <div className="grid gap-4 md:grid-cols-[1.4fr_1fr]">
-                          <div>
-                            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-ink/45">Item</p>
-                            <ul className="space-y-1 text-sm">
-                              {o.items.map((it, i) => (
-                                <li key={i} className="flex justify-between gap-3">
-                                  <span>{it.qty}× {it.title} · {COLORS[it.color]?.label ?? it.color} · <b>{it.size}</b></span>
-                                  <span className="shrink-0">{rupiah(it.price * it.qty)}</span>
-                                </li>
-                              ))}
-                            </ul>
-                            <p className="mt-2 text-xs text-ink/55">
-                              Subtotal {rupiah(o.subtotal)} · ongkir {rupiah(o.shipping.cost)} ({o.shipping.courier})
-                              {o.discount > 0 && ` · diskon ${rupiah(o.discount)}`}
-                            </p>
-                          </div>
-                          <div className="text-sm">
-                            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-ink/45">Pengiriman</p>
-                            <p className="font-semibold">{o.customer.name} · {o.customer.phone}</p>
-                            <p className="text-ink/65">{o.customer.address}, {o.customer.city} {o.customer.postal}</p>
-                            {o.customer.email && <p className="text-xs text-ink/50">{o.customer.email}</p>}
-                            {o.notes && <p className="mt-1 text-xs text-ink/70">Catatan: {o.notes}</p>}
-                            <Link href={`/order/${o.id}`} className="mt-2 inline-block text-xs font-semibold text-jade-700 hover:underline">Buka halaman pesanan →</Link>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
+                <tr
+                  key={o.id}
+                  className="cursor-pointer border-t border-ink/5 hover:bg-cream/60"
+                  onClick={() => router.push(`/admin/pesanan/${o.id}`)}
+                >
+                  <td className="p-3">
+                    <p className="font-semibold">{o.id}</p>
+                    <p className="text-xs text-ink/45">{fmtDate(o.createdAt)} · {fmtTime(o.createdAt)}</p>
+                  </td>
+                  <td className="p-3">
+                    <p className="font-semibold">{o.customer.name}</p>
+                    <p className="text-xs text-ink/45">{o.username ? `@${o.username}` : "guest"} · {o.customer.city}</p>
+                  </td>
+                  <td className="p-3 text-xs text-ink/70">
+                    {units} pcs
+                    <span className="block max-w-48 truncate text-ink/45">{o.items.map((i) => `${i.qty}×${i.size}`).join(", ")}</span>
+                  </td>
+                  <td className="p-3">
+                    <p className="font-bold">{rupiah(o.total)}</p>
+                    <p className={`text-xs ${o.payment.status === "paid" ? "text-jade-700" : "text-sun-600"}`}>
+                      {o.payment.status === "paid" ? "lunas" : "belum dibayar"}
+                      {o.discount > 0 && ` · ${o.voucherCode}`}
+                    </p>
+                  </td>
+                  <td className="p-3 text-xs">
+                    {o.shipment ? (
+                      <>
+                        <span className="font-semibold">{o.shipment.courier}</span>
+                        <span className="block font-mono text-ink/55">{o.shipment.trackingNumber}</span>
+                      </>
+                    ) : (
+                      <span className="text-ink/40">{o.shipping.courier} · belum ada resi</span>
+                    )}
+                  </td>
+                  <td className="p-3"><span className={`chip text-xs ${ORDER_STATUS[o.status].chip}`}>{ORDER_STATUS[o.status].label}</span></td>
+                  <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>{action(o)}</td>
+                </tr>
               );
             })}
           </tbody>

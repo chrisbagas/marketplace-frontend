@@ -63,6 +63,13 @@ export default function AdminPage() {
     setPendingReviews(rv.reviews ?? []);
   }, []);
 
+  // buka tab dari URL, mis. /admin?tab=Pesanan (dipakai tombol kembali di detail pesanan)
+  useEffect(() => {
+    const want = new URLSearchParams(window.location.search).get("tab");
+    const match = TABS.find((t) => t === want);
+    if (match) setTab(match);
+  }, []);
+
   useEffect(() => {
     load();
     const t = setInterval(load, 5000);

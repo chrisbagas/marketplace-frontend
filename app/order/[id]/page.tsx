@@ -98,15 +98,6 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
 
   useEffect(() => { load(); }, [load]);
 
-  async function advance() {
-    await fetch(`/api/orders/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "advance" }),
-    });
-    load();
-  }
-
   if (missing) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-center">
@@ -165,10 +156,30 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             </button>
           </div>
         )}
-        {isAdmin && order.status !== "selesai" && order.payment.status === "paid" && (
-          <button onClick={advance} className="btn-secondary btn-sm mt-5" data-track="advance-order">
-            ▶ Simulasikan tahap berikutnya (admin)
-          </button>
+        {order.shipment && (
+          <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl bg-jade-50 p-3 text-sm">
+            <span className="text-2xl">📦</span>
+            <div className="flex-1">
+              <p className="font-semibold text-jade-800">
+                {order.status === "selesai" ? "Paket sudah diterima" : "Paket dalam perjalanan"} · {order.shipment.courier}
+              </p>
+              <p className="text-ink/65">
+                No. resi <b className="font-mono text-ink">{order.shipment.trackingNumber}</b> · diserahkan {fmtDate(order.shipment.shippedAt)}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => navigator.clipboard?.writeText(order.shipment!.trackingNumber)}
+            >
+              Salin resi
+            </button>
+          </div>
+        )}
+        {isAdmin && (
+          <Link href={`/admin/pesanan/${order.id}`} className="mt-4 inline-block text-sm font-semibold text-jade-700 hover:underline">
+            Kelola pesanan ini di dashboard admin →
+          </Link>
         )}
       </div>
 

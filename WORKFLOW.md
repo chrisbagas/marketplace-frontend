@@ -96,8 +96,12 @@ Beranda ──► Jelajah (/products) ──► Detail produk ──► Keranjan
   subtotal/ongkir/diskon/total diambil dari `POST /api/checkout/quote` (harga dihitung server).
 - Setelah pesanan dibuat keranjang dikosongkan; popup pembayaran bisa ditutup ("bayar nanti") dan
   pesanan dibayar dari halaman pesanan. Riwayat di **`/pesanan`** (menu akun → Pesanan saya).
-- **Admin** → tab **Pesanan** (filter status, cari no./nama/email/@akun, detail alamat & item,
-  tombol *Majukan*) dan tab **Voucher** (buat, aktif/nonaktif, pemakaian).
+- **Admin** → tab **Pesanan** (filter status, cari no./nama/email/@akun, aksi cepat per status) →
+  klik baris membuka **`/admin/pesanan/[id]`**: detail operasional (item + file desain untuk cetak,
+  penerima + tombol WhatsApp, pembayaran, riwayat) dan langkah berikutnya: tandai lunas manual →
+  mulai produksi → **input kurir + nomor resi (wajib) → dikirim** → tandai diterima. Resi bisa
+  dikoreksi selama status dikirim. Tab **Voucher**: buat, aktif/nonaktif, pemakaian.
+- Pembeli melihat kurir + nomor resi (tombol salin) di halaman pesanannya.
 - **Kreator** → bagian **Pesanan masuk** di `/designer`: item yang memuat produknya, ukuran & jumlah,
   nama depan + kota pembeli, royalti (tercatat saat lunas, estimasi sebelum itu).
 

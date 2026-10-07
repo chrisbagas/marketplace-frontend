@@ -62,6 +62,8 @@ export type Order = {
   voucherCode?: string;
   total: number;
   payment: { method: string; status: "pending" | "paid"; ref: string; paidAt?: number };
+  // data dari kurir — selalu ada bila status "dikirim" / "selesai"
+  shipment?: { courier: string; trackingNumber: string; shippedAt: number };
   status: "menunggu-pembayaran" | "dibayar" | "produksi" | "dikirim" | "selesai";
   timeline: { status: string; t: number }[];
 };

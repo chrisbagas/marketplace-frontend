@@ -52,6 +52,27 @@ export async function advanceOrder(id: string): Promise<Order> {
   return (await json<{ order: Order }>(await send(`/api/orders/${id}`, { action: "advance" }, "PATCH"))).order;
 }
 
+// produksi → dikirim (update=false) atau koreksi resi saat dikirim (update=true)
+export async function shipOrder(id: string, courier: string, trackingNumber: string, update = false): Promise<Order> {
+  const action = update ? "update-shipment" : "ship";
+  return (await json<{ order: Order }>(await send(`/api/orders/${id}`, { action, courier, trackingNumber }, "PATCH"))).order;
+}
+
+// admin menandai lunas secara manual (mis. transfer bank yang dicek manual)
+export async function markPaid(id: string, method: string): Promise<Order> {
+  return (await json<{ order: Order }>(await send(`/api/orders/${id}`, { action: "pay", method }, "PATCH"))).order;
+}
+
+export async function getOrder(id: string): Promise<Order> {
+  return (await json<{ order: Order }>(await fetch(`/api/orders/${id}`, { cache: "no-store" }))).order;
+}
+
+// kurir yang bisa dipilih saat menginput resi (kurir pilihan pembeli selalu ikut)
+export const SHIPPING_CARRIERS = [
+  "JNE REG", "JNE YES", "SiCepat REG", "SiCepat BEST", "AnterAja Reguler", "AnterAja Next Day",
+  "J&T Express", "Pos Indonesia", "Ninja Xpress", "Lion Parcel",
+];
+
 export async function getCreatorOrders() {
   return json<{ items: CreatorOrderItem[]; summary: CreatorOrderSummary }>(
     await fetch("/api/designer/orders", { cache: "no-store" }),
