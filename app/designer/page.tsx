@@ -5,14 +5,14 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import Mockup from "@/components/Mockup";
 import { StatTile, LineChart } from "@/components/charts";
-import { COLORS, DESIGNERS, PRODUCT_TYPES } from "@/lib/data";
+import { COLORS, PRODUCT_TYPES } from "@/lib/data";
 import { getProducts } from "@/lib/api";
+import { useSession } from "@/lib/auth";
 import { rupiah, compact, timeAgo } from "@/lib/format";
 import type { DesignSubmission, DayStat, Product } from "@/lib/types";
 
-// Demo persona: the session is treated as designer "Raka Wijaya" (no login in
-// the prototype). His listings + anything submitted from the Studio show here.
-const ME = DESIGNERS[0];
+// Dashboard milik kreator yang sedang login (profil toko dari /api/auth/me).
+// Admin juga boleh membuka halaman ini; tanpa profil toko, daftar produknya kosong.
 const ROYALTY_SHARE = 0.12;
 
 const STATUS_CHIP: Record<string, string> = {
@@ -26,17 +26,30 @@ export default function DesignerDashboard() {
   const [subs, setSubs] = useState<DesignSubmission[]>([]);
   const [myListings, setMyListings] = useState<Product[]>([]);
   const [editing, setEditing] = useState<Product | null>(null);
+  const { user } = useSession();
+  const ME = user?.designer ?? {
+    id: "",
+    name: user?.name ?? "",
+    city: "Tanpa profil toko",
+    hue: 152,
+    followers: 0,
+    rating: 0,
+    avatarUri: "",
+  };
 
-  const loadListings = () => getProducts({ designer: ME.id }).then(setMyListings).catch(() => {});
+  const loadListings = () =>
+    ME.id ? getProducts({ designer: ME.id }).then(setMyListings).catch(() => {}) : setMyListings([]);
 
   useEffect(() => {
+    if (!user) return;
     fetch("/api/stats").then((r) => r.json()).then((d) => setDays(d.days ?? []));
     loadListings();
     const loadSubs = () => fetch("/api/designs").then((r) => r.json()).then((d) => setSubs(d.designs ?? []));
     loadSubs();
     const t = setInterval(loadSubs, 8000);
     return () => clearInterval(t);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, ME.id]);
   const totalSold = myListings.reduce((a, l) => a + l.sold, 0);
   const royalty = days.map((d) => ({ label: d.date.slice(5), value: Math.round(d.revenue * ROYALTY_SHARE * 0.34) }));
   const balance = royalty.reduce((a, r) => a + r.value, 0);
@@ -45,11 +58,13 @@ export default function DesignerDashboard() {
   const recent = spark.slice(half).reduce((a, b) => a + b, 0);
   const prev = spark.slice(0, half).reduce((a, b) => a + b, 0) || 1;
 
+  if (!user) return <div className="mx-auto h-96 max-w-6xl animate-pulse px-4 py-10" />;
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Avatar name={ME.name} hue={ME.hue} size={56} className="shadow-md ring-2 ring-white" />
+          <Avatar uri={ME.avatarUri} name={ME.name} hue={ME.hue} size={56} className="shadow-md ring-2 ring-white" />
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight">Halo, {ME.name.split(" ")[0]} 👋</h1>
             <p className="text-sm text-ink/55">Studio Kreator · {ME.city} · {compact(ME.followers)} pengikut</p>

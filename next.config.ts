@@ -5,6 +5,14 @@ import type { NextConfig } from "next";
 const API_URL = process.env.API_URL ?? "http://localhost:8081";
 
 const nextConfig: NextConfig = {
+  // Halaman tujuan link email membawa token di URL — jangan bocorkan lewat
+  // header Referer ke situs lain (mis. font/gambar pihak ketiga).
+  async headers() {
+    return ["/reset-password", "/verifikasi-email"].map((source) => ({
+      source,
+      headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+    }));
+  },
   async rewrites() {
     return [
       { source: "/api/:path*", destination: `${API_URL}/api/:path*` },

@@ -96,7 +96,6 @@ export default function StudioPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
-        designer: "Raka Wijaya",
         type,
         color: colorId,
         price,
