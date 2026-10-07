@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Mockup from "@/components/Mockup";
-import PaymentModal from "@/components/PaymentModal";
+import PaymentLauncher from "@/components/PaymentLauncher";
 import { clearCart, getCart, type CartItem } from "@/lib/cart";
 import { COLORS, type ProductType } from "@/lib/data";
 import { useSession } from "@/lib/auth";
@@ -325,13 +325,13 @@ export default function CheckoutPage() {
             <button type="submit" disabled={!quote || !!quoteError || busy} className="btn-primary mt-5 w-full disabled:opacity-50" data-track="bayar-sekarang">
               {busy ? "Membuat pesanan…" : quote ? `Buat pesanan · ${rupiah(quote.total)}` : "Menghitung…"}
             </button>
-            <p className="mt-3 text-center text-xs text-ink/45">🔒 Pembayaran aman via gateway sandbox (demo)</p>
+            <p className="mt-3 text-center text-xs text-ink/45">🔒 Pembayaran diproses aman oleh Midtrans — QRIS, virtual account, e-wallet</p>
           </div>
         </div>
       </form>
 
       {order && (
-        <PaymentModal
+        <PaymentLauncher
           order={order}
           onClose={() => router.push(`/order/${order.id}`)}
           onPaid={() => {

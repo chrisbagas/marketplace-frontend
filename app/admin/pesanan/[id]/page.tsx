@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Mockup from "@/components/Mockup";
 import { COLORS, type ProductType } from "@/lib/data";
-import { advanceOrder, getOrder, markDelivered, markPaid, ORDER_STATUS, ORDER_STATUSES, SHIPPING_CARRIERS, shipOrder } from "@/lib/orders";
+import { advanceOrder, getOrder, markDelivered, markPaid, ORDER_FLOW, ORDER_STATUS, SHIPPING_CARRIERS, shipOrder } from "@/lib/orders";
 import { fmtDate, fmtTime, rupiah } from "@/lib/format";
 import type { Order } from "@/lib/types";
 
@@ -61,7 +61,8 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
   if (!order) return <div className="mx-auto h-96 max-w-6xl animate-pulse px-4 py-10" />;
 
   const st = ORDER_STATUS[order.status];
-  const stepIdx = ORDER_STATUSES.indexOf(order.status);
+  const stepIdx = ORDER_FLOW.indexOf(order.status);
+  const cancelled = order.status === "dibatalkan";
   const units = order.items.reduce((a, i) => a + i.qty, 0);
   const resiClean = normalizeResi(resi);
   const resiValid = TRACKING_RE.test(resiClean);
@@ -126,7 +127,7 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
       {/* progres + langkah berikutnya */}
       <section className="card mt-6 p-5">
         <ol className="flex flex-wrap gap-2 text-xs">
-          {ORDER_STATUSES.map((s, i) => (
+          {!cancelled && ORDER_FLOW.map((s, i) => (
             <li key={s} className={`chip ${i < stepIdx ? "bg-jade-100 text-jade-800" : i === stepIdx ? "bg-jade-700 text-white" : "bg-ink/5 text-ink/40"}`}>
               {i < stepIdx ? "✓ " : ""}{ORDER_STATUS[s].label}
             </li>
@@ -135,6 +136,12 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
 
         <div className="mt-5 border-t border-ink/8 pt-5">
           <p className="text-xs font-bold uppercase tracking-wide text-ink/45">Langkah berikutnya</p>
+          {cancelled && (
+            <p className="mt-2 text-sm text-ink/70">
+              Pesanan dibatalkan karena tidak dibayar sampai batas waktu. Bila dana ternyata masuk belakangan,
+              pesanan otomatis aktif kembali lewat notifikasi gateway.
+            </p>
+          )}
           {order.status === "menunggu-pembayaran" && (
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <p className="flex-1 text-sm text-ink/70">Menunggu pembeli membayar {rupiah(order.total)}. Produksi dimulai setelah lunas.</p>
@@ -283,7 +290,7 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
           <section className="card p-5 text-sm">
             <p className="font-bold">Pembayaran</p>
             <dl className="mt-2 space-y-1">
-              <div className="flex justify-between gap-3"><dt className="text-ink/55">Status</dt><dd className={order.payment.status === "paid" ? "font-semibold text-jade-800" : "text-sun-600"}>{order.payment.status === "paid" ? "LUNAS" : "MENUNGGU"}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-ink/55">Status</dt><dd className={order.payment.status === "paid" ? "font-semibold text-jade-800" : order.payment.status === "pending" ? "text-sun-600" : "text-coral-600"}>{{ paid: "LUNAS", pending: "MENUNGGU", expired: "KEDALUWARSA", failed: "GAGAL" }[order.payment.status]}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-ink/55">Metode</dt><dd>{order.payment.method}</dd></div>
               <div className="flex justify-between gap-3"><dt className="text-ink/55">Ref gateway</dt><dd className="font-mono">{order.payment.ref}</dd></div>
               {order.payment.paidAt && <div className="flex justify-between gap-3"><dt className="text-ink/55">Dibayar</dt><dd>{fmtDate(order.payment.paidAt)} · {fmtTime(order.payment.paidAt)}</dd></div>}

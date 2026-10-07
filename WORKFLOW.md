@@ -94,8 +94,11 @@ Beranda ──► Jelajah (/products) ──► Detail produk ──► Keranjan
 - **Checkout** (`/checkout`, wajib login): data penerima (nama, WhatsApp, email, alamat, kota, kode
   pos, catatan kurir) terisi dari profil + opsi simpan ke profil; pilih kurir; **voucher**; ringkasan
   subtotal/ongkir/diskon/total diambil dari `POST /api/checkout/quote` (harga dihitung server).
-- Setelah pesanan dibuat keranjang dikosongkan; popup pembayaran bisa ditutup ("bayar nanti") dan
-  pesanan dibayar dari halaman pesanan. Riwayat di **`/pesanan`** (menu akun → Pesanan saya).
+- Setelah pesanan dibuat keranjang dikosongkan; popup pembayaran **Midtrans Snap** (QRIS, VA, e-wallet)
+  bisa ditutup ("bayar nanti") dan pesanan dibayar dari halaman pesanan. Lunas ditentukan server
+  (webhook / cek status ke Midtrans), bukan oleh browser; halaman pesanan mengecek status tiap 15 dtk
+  selama menunggu. Tak dibayar 24 jam → **dibatalkan** (voucher kembali) + tombol "Pesan lagi".
+  Tanpa kunci Midtrans di backend, dev memakai popup tiruan (mock). Riwayat di **`/pesanan`** (menu akun → Pesanan saya).
 - **Admin** → tab **Pesanan** (filter status, cari no./nama/email/@akun, aksi cepat per status) →
   klik baris membuka **`/admin/pesanan/[id]`**: detail operasional (item + file desain untuk cetak,
   penerima + tombol WhatsApp, pembayaran, riwayat) dan langkah berikutnya: tandai lunas manual →

@@ -61,12 +61,19 @@ export type Order = {
   discount: number;
   voucherCode?: string;
   total: number;
-  payment: { method: string; status: "pending" | "paid"; ref: string; paidAt?: number };
+  payment: {
+    method: string;
+    status: "pending" | "paid" | "expired" | "failed";
+    ref: string;
+    paidAt?: number;
+    expiresAt?: number; // batas bayar (saat menunggu pembayaran)
+    gateway?: string;
+  };
   // data dari kurir — selalu ada bila status "dikirim" / "selesai"
   shipment?: { courier: string; trackingNumber: string; shippedAt: number; deliveredAt?: number };
   autoCompleteAt?: number; // status "tiba": selesai otomatis bila pembeli tidak konfirmasi
   completedAt?: number;
-  status: "menunggu-pembayaran" | "dibayar" | "produksi" | "dikirim" | "tiba" | "selesai";
+  status: "menunggu-pembayaran" | "dibayar" | "produksi" | "dikirim" | "tiba" | "selesai" | "dibatalkan";
   timeline: { status: string; t: number }[];
 };
 
