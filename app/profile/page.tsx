@@ -82,6 +82,8 @@ export default function ProfilePage() {
           <textarea id="p-alamat" className="input" rows={2} value={profile.address} onChange={(e) => set({ address: e.target.value })} placeholder="Jl. Merdeka No. 10, RT 01/RW 02" />
           <label className="label mt-3" htmlFor="p-kota">Kota / Kabupaten</label>
           <input id="p-kota" className="input" value={profile.city} onChange={(e) => set({ city: e.target.value })} placeholder="Bandung" />
+          <label className="label mt-3" htmlFor="p-pos">Kode pos</label>
+          <input id="p-pos" className="input" inputMode="numeric" maxLength={5} value={profile.postal ?? ""} onChange={(e) => set({ postal: e.target.value.replace(/\D/g, "") })} placeholder="40111" />
         </section>
 
         <section className="card p-5">

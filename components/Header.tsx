@@ -121,6 +121,7 @@ function AccountMenu({ user, active }: { user: SessionUser; active: boolean }) {
 
   const initial = (user.name || user.username).trim().charAt(0).toUpperCase();
   const links = [
+    { href: "/pesanan", label: "Pesanan saya" },
     { href: "/profile", label: "Profil & desain saya" },
     canAccess(user, "/designer") && { href: "/designer", label: "Studio Kreator" },
     canAccess(user, "/admin") && { href: "/admin", label: "Dashboard admin" },

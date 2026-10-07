@@ -8,7 +8,7 @@ import ProductCard from "@/components/ProductCard";
 import SizeGuide from "@/components/SizeGuide";
 import { COLORS, designerById } from "@/lib/data";
 import type { Product, Review } from "@/lib/types";
-import { addToCart } from "@/lib/cart";
+import { addManyToCart, addToCart, MAX_QTY } from "@/lib/cart";
 import { rupiah, compact, timeAgo } from "@/lib/format";
 import { track } from "@/lib/track";
 
@@ -16,6 +16,11 @@ export default function ProductDetail({ listing, related }: { listing: Product; 
   const [color, setColor] = useState(listing.colorIds[0]);
   const [size, setSize] = useState(listing.sizes[Math.min(1, listing.sizes.length - 1)]);
   const [qty, setQty] = useState(1);
+  // mode "beberapa ukuran": jumlah per ukuran, mis. { M: 2, XL: 1 }
+  const [multi, setMulti] = useState(false);
+  const [sizeQty, setSizeQty] = useState<Record<string, number>>({});
+  const multiLines = listing.sizes.filter((s) => (sizeQty[s] ?? 0) > 0);
+  const multiTotal = multiLines.reduce((a, s) => a + sizeQty[s], 0);
   const [view, setView] = useState<MockupView>("flat");
   const [added, setAdded] = useState(false);
   const [reviewData, setReviewData] = useState<{ reviews: Review[]; avg: number; count: number } | null>(null);
@@ -29,21 +34,33 @@ export default function ProductDetail({ listing, related }: { listing: Product; 
       .catch(() => {});
   }, [listing.id, listing.price]);
 
+  const line = (s: string, q: number) => ({
+    productId: listing.id,
+    title: listing.title,
+    type: listing.type,
+    color,
+    size: s,
+    qty: q,
+    price: listing.price, // hanya untuk tampilan keranjang — harga tagihan dihitung server
+    designUri: listing.designUri,
+  });
+
   function handleAdd() {
-    addToCart({
-      productId: listing.id,
-      title: listing.title,
-      type: listing.type,
-      color,
-      size,
-      qty,
-      price: listing.price,
-      designUri: listing.designUri,
-    });
-    track("add_to_cart", { label: listing.id, value: listing.price * qty });
+    if (multi) {
+      if (multiTotal === 0) return;
+      addManyToCart(multiLines.map((s) => line(s, sizeQty[s])));
+      track("add_to_cart", { label: listing.id, value: listing.price * multiTotal });
+      setSizeQty({});
+    } else {
+      addToCart(line(size, qty));
+      track("add_to_cart", { label: listing.id, value: listing.price * qty });
+    }
     setAdded(true);
     setTimeout(() => setAdded(false), 1800);
   }
+
+  const bump = (s: string, d: number) =>
+    setSizeQty((m) => ({ ...m, [s]: Math.max(0, Math.min(MAX_QTY, (m[s] ?? 0) + d)) }));
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -132,31 +149,74 @@ export default function ProductDetail({ listing, related }: { listing: Product; 
           </div>
 
           <div className="mt-5">
-            <p className="label">Ukuran</p>
-            <div className="flex flex-wrap gap-2">
-              {listing.sizes.map((s) => (
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="label">Ukuran</p>
+              {listing.sizes.length > 1 && (
                 <button
-                  key={s}
-                  onClick={() => setSize(s)}
-                  className={`min-w-11 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
-                    size === s ? "border-jade-700 bg-jade-700 text-white" : "border-ink/15 bg-white hover:border-ink/35"
-                  }`}
+                  type="button"
+                  onClick={() => setMulti((m) => !m)}
+                  className="text-xs font-semibold text-jade-700 hover:underline"
+                  data-track="toggle-multi-ukuran"
                 >
-                  {s}
+                  {multi ? "Pilih satu ukuran" : "Beli beberapa ukuran sekaligus"}
                 </button>
-              ))}
+              )}
             </div>
+            {multi ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {listing.sizes.map((s) => (
+                  <div
+                    key={s}
+                    className={`flex items-center justify-between rounded-xl border px-3 py-2 ${(sizeQty[s] ?? 0) > 0 ? "border-jade-700 bg-jade-50" : "border-ink/15 bg-white"}`}
+                  >
+                    <span className="text-sm font-semibold">{s}</span>
+                    <div className="flex items-center rounded-full border border-ink/15 bg-white">
+                      <button type="button" className="px-3 py-1 font-bold" onClick={() => bump(s, -1)} aria-label={`Kurangi ${s}`}>−</button>
+                      <span className="w-6 text-center text-sm font-semibold">{sizeQty[s] ?? 0}</span>
+                      <button type="button" className="px-3 py-1 font-bold" onClick={() => bump(s, 1)} aria-label={`Tambah ${s}`}>+</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {listing.sizes.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setSize(s)}
+                    className={`min-w-11 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                      size === s ? "border-jade-700 bg-jade-700 text-white" : "border-ink/15 bg-white hover:border-ink/35"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
             <SizeGuide type={listing.type} />
           </div>
 
           <div className="mt-6 flex items-center gap-3">
-            <div className="flex items-center rounded-full border border-ink/15 bg-white">
-              <button className="px-4 py-2.5 font-bold" onClick={() => setQty(Math.max(1, qty - 1))}>−</button>
-              <span className="w-8 text-center font-semibold">{qty}</span>
-              <button className="px-4 py-2.5 font-bold" onClick={() => setQty(qty + 1)}>+</button>
-            </div>
-            <button onClick={handleAdd} className="btn-primary flex-1" data-track={`add-${listing.id}`}>
-              {added ? "✓ Masuk keranjang!" : `Tambah ke keranjang · ${rupiah(listing.price * qty)}`}
+            {!multi && (
+              <div className="flex items-center rounded-full border border-ink/15 bg-white">
+                <button className="px-4 py-2.5 font-bold" onClick={() => setQty(Math.max(1, qty - 1))}>−</button>
+                <span className="w-8 text-center font-semibold">{qty}</span>
+                <button className="px-4 py-2.5 font-bold" onClick={() => setQty(Math.min(MAX_QTY, qty + 1))}>+</button>
+              </div>
+            )}
+            <button
+              onClick={handleAdd}
+              disabled={multi && multiTotal === 0}
+              className="btn-primary flex-1 disabled:cursor-not-allowed disabled:opacity-50"
+              data-track={`add-${listing.id}`}
+            >
+              {added
+                ? "✓ Masuk keranjang!"
+                : multi
+                  ? multiTotal === 0
+                    ? "Pilih jumlah per ukuran"
+                    : `Tambah ${multiTotal} item (${multiLines.map((s) => `${sizeQty[s]}×${s}`).join(", ")}) · ${rupiah(listing.price * multiTotal)}`
+                  : `Tambah ke keranjang · ${rupiah(listing.price * qty)}`}
             </button>
           </div>
 

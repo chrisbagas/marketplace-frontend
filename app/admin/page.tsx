@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Mockup from "@/components/Mockup";
+import OrdersPanel from "@/components/admin/OrdersPanel";
+import VouchersPanel from "@/components/admin/VouchersPanel";
 import { StatTile, LineChart, HBarList, Funnel, VitalTile } from "@/components/charts";
 import { COLORS } from "@/lib/data";
 import { rupiah, compact, timeAgo, fmtDate } from "@/lib/format";
@@ -22,7 +24,7 @@ type Stats = {
   pendingDesigns: number;
 };
 
-const TABS = ["Ringkasan", "Perilaku Pelanggan", "Performa", "Moderasi"] as const;
+const TABS = ["Ringkasan", "Pesanan", "Voucher", "Perilaku Pelanggan", "Performa", "Moderasi"] as const;
 
 const EVENT_LABEL: Record<string, { icon: string; text: (e: Stats["recentEvents"][number]) => string }> = {
   page_view: { icon: "👁️", text: (e) => `Membuka halaman ${e.page}` },
@@ -59,6 +61,13 @@ export default function AdminPage() {
     setStats(s);
     setPending(d.designs ?? []);
     setPendingReviews(rv.reviews ?? []);
+  }, []);
+
+  // buka tab dari URL, mis. /admin?tab=Pesanan (dipakai tombol kembali di detail pesanan)
+  useEffect(() => {
+    const want = new URLSearchParams(window.location.search).get("tab");
+    const match = TABS.find((t) => t === want);
+    if (match) setTab(match);
   }, []);
 
   useEffect(() => {
@@ -148,7 +157,10 @@ export default function AdminPage() {
               />
             </div>
             <div className="card overflow-hidden" style={{ background: "var(--viz-surface)" }}>
-              <p className="p-5 pb-3 font-bold">Pesanan terbaru</p>
+              <div className="flex items-center justify-between p-5 pb-3">
+                <p className="font-bold">Pesanan terbaru</p>
+                <button onClick={() => setTab("Pesanan")} className="text-xs font-semibold text-jade-700 hover:underline">Lihat semua pesanan →</button>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-120 text-left text-sm">
                   <tbody>
@@ -271,6 +283,9 @@ export default function AdminPage() {
       )}
 
       {/* ---- Moderasi ---- */}
+      {tab === "Pesanan" && <OrdersPanel />}
+      {tab === "Voucher" && <VouchersPanel />}
+
       {tab === "Moderasi" && (
         <div className="mt-6">
           <p className="text-sm text-ink/55">
