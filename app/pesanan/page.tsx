@@ -66,6 +66,9 @@ export default function MyOrdersPage() {
               {o.payment.status === "pending" && (
                 <p className="mt-3 text-xs font-semibold text-sun-600">Belum dibayar — buka untuk membayar →</p>
               )}
+              {o.status === "tiba" && (
+                <p className="mt-3 text-xs font-semibold text-jade-700">Paket sudah tiba — buka untuk konfirmasi pesanan diterima →</p>
+              )}
             </Link>
           );
         })}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Mockup from "@/components/Mockup";
 import PaymentModal from "@/components/PaymentModal";
 import { useSession } from "@/lib/auth";
+import { confirmReceived } from "@/lib/orders";
 import { COLORS, type ProductType } from "@/lib/data";
 import { rupiah, fmtDate, fmtTime } from "@/lib/format";
 import type { Order } from "@/lib/types";
@@ -14,6 +15,7 @@ const STEPS: { key: Order["status"]; label: string; icon: string }[] = [
   { key: "dibayar", label: "Dibayar", icon: "✅" },
   { key: "produksi", label: "Produksi (cetak DTG)", icon: "🖨️" },
   { key: "dikirim", label: "Dikirim", icon: "📦" },
+  { key: "tiba", label: "Tiba", icon: "📬" },
   { key: "selesai", label: "Selesai", icon: "🎉" },
 ];
 
@@ -87,6 +89,8 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   const [order, setOrder] = useState<Order | null>(null);
   const [missing, setMissing] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
   const { user } = useSession();
   const isAdmin = user?.role === "admin";
 
@@ -161,7 +165,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             <span className="text-2xl">📦</span>
             <div className="flex-1">
               <p className="font-semibold text-jade-800">
-                {order.status === "selesai" ? "Paket sudah diterima" : "Paket dalam perjalanan"} · {order.shipment.courier}
+                {order.status === "selesai" ? "Paket sudah diterima" : order.status === "tiba" ? "Paket sudah tiba" : "Paket dalam perjalanan"} · {order.shipment.courier}
               </p>
               <p className="text-ink/65">
                 No. resi <b className="font-mono text-ink">{order.shipment.trackingNumber}</b> · diserahkan {fmtDate(order.shipment.shippedAt)}
@@ -173,6 +177,35 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               onClick={() => navigator.clipboard?.writeText(order.shipment!.trackingNumber)}
             >
               Salin resi
+            </button>
+          </div>
+        )}
+        {order.status === "tiba" && order.userId === user?.id && (
+          <div className="mt-4 rounded-xl border border-jade-700 bg-white p-4">
+            <p className="font-bold">Paket sudah sampai?</p>
+            <p className="mt-1 text-sm text-ink/65">
+              Kurir melaporkan paket tiba{order.shipment?.deliveredAt && <> pada {fmtDate(order.shipment.deliveredAt)} · {fmtTime(order.shipment.deliveredAt)}</>}.
+              Cek barangmu, lalu konfirmasi.
+              {order.autoCompleteAt && <> Bila tidak dikonfirmasi, pesanan selesai otomatis pada <b>{fmtDate(order.autoCompleteAt)} · {fmtTime(order.autoCompleteAt)}</b>.</>}
+            </p>
+            {confirmError && <p className="mt-2 text-sm font-semibold text-coral-600">{confirmError}</p>}
+            <button
+              className="btn-primary btn-sm mt-3"
+              disabled={confirming}
+              data-track="pesanan-diterima"
+              onClick={async () => {
+                setConfirming(true);
+                setConfirmError("");
+                try {
+                  setOrder(await confirmReceived(order.id));
+                } catch (e) {
+                  setConfirmError((e as Error).message);
+                } finally {
+                  setConfirming(false);
+                }
+              }}
+            >
+              {confirming ? "Menyimpan…" : "Pesanan diterima ✓"}
             </button>
           </div>
         )}

@@ -63,8 +63,10 @@ export type Order = {
   total: number;
   payment: { method: string; status: "pending" | "paid"; ref: string; paidAt?: number };
   // data dari kurir — selalu ada bila status "dikirim" / "selesai"
-  shipment?: { courier: string; trackingNumber: string; shippedAt: number };
-  status: "menunggu-pembayaran" | "dibayar" | "produksi" | "dikirim" | "selesai";
+  shipment?: { courier: string; trackingNumber: string; shippedAt: number; deliveredAt?: number };
+  autoCompleteAt?: number; // status "tiba": selesai otomatis bila pembeli tidak konfirmasi
+  completedAt?: number;
+  status: "menunggu-pembayaran" | "dibayar" | "produksi" | "dikirim" | "tiba" | "selesai";
   timeline: { status: string; t: number }[];
 };
 

@@ -83,7 +83,7 @@ Beranda ──► Jelajah (/products) ──► Detail produk ──► Keranjan
 4. **Pembayaran** — popup ala Midtrans Snap (`components/PaymentModal.tsx`): pilih metode,
    tampil QR/nomor VA/instruksi e-wallet + countdown. Tombol **"Simulasikan pembayaran berhasil"**
    memanggil `PATCH /api/orders/[id] {action:"pay"}` (pengganti webhook notifikasi gateway).
-5. **Lacak pesanan** — timeline `menunggu-pembayaran → dibayar → produksi → dikirim → selesai`.
+5. **Lacak pesanan** — timeline `menunggu-pembayaran → dibayar → produksi → dikirim → tiba → selesai`.
    Tombol *"Simulasikan tahap berikutnya"* memajukan status untuk demo.
 
 ### Keranjang & checkout
@@ -99,9 +99,11 @@ Beranda ──► Jelajah (/products) ──► Detail produk ──► Keranjan
 - **Admin** → tab **Pesanan** (filter status, cari no./nama/email/@akun, aksi cepat per status) →
   klik baris membuka **`/admin/pesanan/[id]`**: detail operasional (item + file desain untuk cetak,
   penerima + tombol WhatsApp, pembayaran, riwayat) dan langkah berikutnya: tandai lunas manual →
-  mulai produksi → **input kurir + nomor resi (wajib) → dikirim** → tandai diterima. Resi bisa
-  dikoreksi selama status dikirim. Tab **Voucher**: buat, aktif/nonaktif, pemakaian.
-- Pembeli melihat kurir + nomor resi (tombol salin) di halaman pesanannya.
+  mulai produksi → **input kurir + nomor resi (wajib) → dikirim** → **paket tiba** (setelah laporan
+  kurir). Resi bisa dikoreksi selama status dikirim. Admin **tidak** bisa menyelesaikan pesanan. Tab **Voucher**: buat, aktif/nonaktif, pemakaian.
+- Pembeli melihat kurir + nomor resi (tombol salin) di halaman pesanannya. Saat paket **tiba**, pembeli
+  menekan **Pesanan diterima** → selesai (lalu bisa memberi ulasan); bila tidak, pesanan selesai
+  otomatis 2 hari setelah tiba.
 - **Kreator** → bagian **Pesanan masuk** di `/designer`: item yang memuat produknya, ukuran & jumlah,
   nama depan + kota pembeli, royalti (tercatat saat lunas, estimasi sebelum itu).
 

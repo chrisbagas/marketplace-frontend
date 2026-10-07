@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Mockup from "@/components/Mockup";
 import { COLORS, type ProductType } from "@/lib/data";
-import { advanceOrder, getOrder, markPaid, ORDER_STATUS, ORDER_STATUSES, SHIPPING_CARRIERS, shipOrder } from "@/lib/orders";
+import { advanceOrder, getOrder, markDelivered, markPaid, ORDER_STATUS, ORDER_STATUSES, SHIPPING_CARRIERS, shipOrder } from "@/lib/orders";
 import { fmtDate, fmtTime, rupiah } from "@/lib/format";
 import type { Order } from "@/lib/types";
 
@@ -172,10 +172,31 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
                     Dalam pengiriman via <b>{order.shipment.courier}</b>, resi <b className="font-mono">{order.shipment.trackingNumber}</b>.
                   </p>
                   <button className="btn-secondary btn-sm" onClick={() => { setEditingResi(true); setCourier(order.shipment!.courier); }}>Ubah resi</button>
-                  <button className="btn-primary btn-sm" disabled={busy} onClick={() => run(() => advanceOrder(order.id))}>Tandai diterima ✓</button>
+                  <button
+                    className="btn-primary btn-sm"
+                    disabled={busy}
+                    onClick={() =>
+                      confirm(
+                        `Pelacakan ${order.shipment!.courier} untuk resi ${order.shipment!.trackingNumber} sudah menyatakan paket SAMPAI?\n\nPembeli lalu punya 2 hari untuk konfirmasi; setelah itu pesanan selesai otomatis.`,
+                      ) && run(() => markDelivered(order.id))
+                    }
+                  >
+                    Paket tiba (laporan kurir)
+                  </button>
                 </div>
               )}
+              <p className="text-xs text-ink/50">
+                Tandai tiba hanya setelah pelacakan kurir menyatakan paket sampai. Nanti dilakukan otomatis lewat integrasi kurir.
+                Pesanan diselesaikan oleh pembeli — bukan admin.
+              </p>
             </div>
+          )}
+          {order.status === "tiba" && (
+            <p className="mt-2 text-sm text-ink/70">
+              Paket tiba {order.shipment?.deliveredAt && <>pada <b>{fmtDate(order.shipment.deliveredAt)} · {fmtTime(order.shipment.deliveredAt)}</b></>}.
+              Menunggu pembeli menekan &quot;Pesanan diterima&quot;
+              {order.autoCompleteAt && <> — selesai otomatis <b>{fmtDate(order.autoCompleteAt)} · {fmtTime(order.autoCompleteAt)}</b></>}.
+            </p>
           )}
           {order.status === "selesai" && <p className="mt-2 text-sm text-ink/70">Pesanan selesai — tidak ada langkah lagi.</p>}
           {error && <p className="mt-3 rounded-lg bg-coral-50 p-2 text-sm font-semibold text-coral-600">{error}</p>}
@@ -247,6 +268,12 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
                 <div className="flex justify-between gap-3"><dt className="text-ink/55">Kurir</dt><dd className="font-semibold">{order.shipment.courier}</dd></div>
                 <div className="flex justify-between gap-3"><dt className="text-ink/55">No. resi</dt><dd className="font-mono font-semibold">{order.shipment.trackingNumber}</dd></div>
                 <div className="flex justify-between gap-3"><dt className="text-ink/55">Diserahkan</dt><dd>{fmtDate(order.shipment.shippedAt)} · {fmtTime(order.shipment.shippedAt)}</dd></div>
+                {order.shipment.deliveredAt ? (
+                  <div className="flex justify-between gap-3"><dt className="text-ink/55">Tiba</dt><dd>{fmtDate(order.shipment.deliveredAt)} · {fmtTime(order.shipment.deliveredAt)}</dd></div>
+                ) : null}
+                {order.completedAt ? (
+                  <div className="flex justify-between gap-3"><dt className="text-ink/55">Selesai</dt><dd>{fmtDate(order.completedAt)} · {fmtTime(order.completedAt)}</dd></div>
+                ) : null}
               </dl>
             ) : (
               <p className="mt-2 text-ink/55">Belum dikirim. Pembeli memilih <b>{order.shipping.courier}</b>.</p>

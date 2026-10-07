@@ -62,11 +62,9 @@ export default function OrdersPanel() {
     if (o.status === "produksi")
       return <Link href={`/admin/pesanan/${o.id}`} className="btn-primary btn-sm">Input resi →</Link>;
     if (o.status === "dikirim")
-      return (
-        <button onClick={() => advance(o.id)} disabled={busy === o.id} className="btn-secondary btn-sm">
-          {busy === o.id ? "…" : "Tandai diterima"}
-        </button>
-      );
+      return <Link href={`/admin/pesanan/${o.id}`} className="btn-secondary btn-sm">Cek pengiriman →</Link>;
+    if (o.status === "tiba" && o.autoCompleteAt)
+      return <span className="text-xs text-ink/50">auto-selesai {fmtDate(o.autoCompleteAt)}</span>;
     return null;
   };
 

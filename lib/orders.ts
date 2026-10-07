@@ -58,6 +58,16 @@ export async function shipOrder(id: string, courier: string, trackingNumber: str
   return (await json<{ order: Order }>(await send(`/api/orders/${id}`, { action, courier, trackingNumber }, "PATCH"))).order;
 }
 
+// admin: dikirim → tiba, setelah ada laporan/pelacakan kurir bahwa paket sampai
+export async function markDelivered(id: string): Promise<Order> {
+  return (await json<{ order: Order }>(await send(`/api/orders/${id}`, { action: "delivered" }, "PATCH"))).order;
+}
+
+// pembeli: tiba → selesai ("Pesanan diterima")
+export async function confirmReceived(id: string): Promise<Order> {
+  return (await json<{ order: Order }>(await send(`/api/orders/${id}`, { action: "confirm" }, "PATCH"))).order;
+}
+
 // admin menandai lunas secara manual (mis. transfer bank yang dicek manual)
 export async function markPaid(id: string, method: string): Promise<Order> {
   return (await json<{ order: Order }>(await send(`/api/orders/${id}`, { action: "pay", method }, "PATCH"))).order;
@@ -96,6 +106,7 @@ export const ORDER_STATUS: Record<Order["status"], { label: string; chip: string
   dibayar: { label: "Dibayar", chip: "bg-jade-100 text-jade-800" },
   produksi: { label: "Produksi", chip: "bg-jade-100 text-jade-800" },
   dikirim: { label: "Dikirim", chip: "bg-jade-100 text-jade-800" },
+  tiba: { label: "Tiba — tunggu konfirmasi", chip: "bg-sun-100 text-sun-600" },
   selesai: { label: "Selesai", chip: "bg-ink/8 text-ink/60" },
 };
 
