@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AuthShell from "@/components/AuthShell";
@@ -17,18 +17,23 @@ function Verify() {
   const [status, setStatus] = useState<Status>(token ? "memproses" : "gagal");
   const [error, setError] = useState(token ? "" : "Link verifikasi tidak lengkap.");
   const [resent, setResent] = useState("");
-  const started = useRef(false);
 
-  useEffect(() => {
-    if (!token || started.current) return;
-    started.current = true; // cegah dua kali kirim (React StrictMode di dev)
+  const run = useCallback(() => {
+    let active = true;
+    setStatus("memproses");
     verifyEmail(token)
-      .then((r) => setStatus(r.alreadyVerified ? "sudah" : "berhasil"))
+      .then((r) => active && setStatus(r.alreadyVerified ? "sudah" : "berhasil"))
       .catch((e: Error) => {
+        if (!active) return;
         setStatus("gagal");
         setError(e.message);
       });
+    return () => {
+      active = false;
+    };
   }, [token]);
+
+  useEffect(() => (token ? run() : undefined), [token, run]);
 
   async function resend() {
     try {
@@ -58,6 +63,11 @@ function Verify() {
         <Link href={user?.role === "designer" ? "/designer" : "/products"} className="btn-primary w-full">
           {user?.role === "designer" ? "Buka Studio Kreator" : "Mulai belanja"}
         </Link>
+      )}
+      {status === "gagal" && token && (
+        <button type="button" onClick={run} className="btn-secondary mb-3 w-full">
+          Coba lagi
+        </button>
       )}
       {status === "gagal" &&
         (user ? (

@@ -43,11 +43,17 @@ export function useSession(): State {
 }
 
 async function post<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000), // jangan biarkan UI menggantung selamanya
+    });
+  } catch {
+    throw new Error("Server tidak merespons. Periksa koneksi lalu coba lagi.");
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error ?? `Gagal (${res.status})`);
   return data as T;
@@ -81,10 +87,25 @@ export async function logout(): Promise<void> {
 
 // ---- verifikasi email & reset password ------------------------------------
 
-export async function verifyEmail(token: string): Promise<{ alreadyVerified?: boolean }> {
-  const res = await post<{ alreadyVerified?: boolean }>("/api/auth/verify-email", { token });
-  if (state.user) refreshSession(); // banner verifikasi hilang
-  return res;
+// Satu permintaan per token, dibagi ke semua pemanggil: aman dari efek ganda
+// (StrictMode / hot reload) tanpa bergantung pada ref komponen.
+const verifying = new Map<string, Promise<{ alreadyVerified?: boolean }>>();
+
+export function verifyEmail(token: string): Promise<{ alreadyVerified?: boolean }> {
+  let p = verifying.get(token);
+  if (!p) {
+    p = post<{ alreadyVerified?: boolean }>("/api/auth/verify-email", { token })
+      .then((res) => {
+        if (state.user) refreshSession(); // banner verifikasi hilang
+        return res;
+      })
+      .finally(() => {
+        // berhasil atau gagal, izinkan percobaan ulang (token sekali pakai ditangani backend)
+        setTimeout(() => verifying.delete(token), 2000);
+      });
+    verifying.set(token, p);
+  }
+  return p;
 }
 
 export const resendVerification = () => post<{ alreadyVerified?: boolean }>("/api/auth/verify-email/resend");
