@@ -3,6 +3,8 @@
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Mockup from "@/components/Mockup";
+import PaymentModal from "@/components/PaymentModal";
+import { useSession } from "@/lib/auth";
 import { COLORS, type ProductType } from "@/lib/data";
 import { rupiah, fmtDate, fmtTime } from "@/lib/format";
 import type { Order } from "@/lib/types";
@@ -84,6 +86,9 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   const { id } = use(params);
   const [order, setOrder] = useState<Order | null>(null);
   const [missing, setMissing] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const { user } = useSession();
+  const isAdmin = user?.role === "admin";
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/orders/${id}`);
@@ -106,8 +111,11 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-center">
         <p className="font-bold">Pesanan tidak ditemukan.</p>
-        <p className="mt-1 text-sm text-ink/55">Catatan: data prototipe tersimpan di memori dan hilang saat server di-restart.</p>
-        <Link href="/products" className="btn-primary mt-5 inline-flex">Kembali belanja</Link>
+        <p className="mt-1 text-sm text-ink/55">Pesanan hanya bisa dilihat oleh akun yang membuatnya.</p>
+        <div className="mt-5 flex justify-center gap-3">
+          <Link href="/pesanan" className="btn-primary">Pesanan saya</Link>
+          <Link href="/products" className="btn-secondary">Kembali belanja</Link>
+        </div>
       </div>
     );
   }
@@ -149,9 +157,17 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             </div>
           ))}
         </div>
-        {order.status !== "selesai" && order.payment.status === "paid" && (
+        {order.payment.status === "pending" && (
+          <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl bg-sun-50 p-3">
+            <p className="flex-1 text-sm text-sun-600">Pesanan menunggu pembayaran {rupiah(order.total)}.</p>
+            <button onClick={() => setPaying(true)} className="btn-primary btn-sm" data-track="bayar-dari-pesanan">
+              Bayar sekarang
+            </button>
+          </div>
+        )}
+        {isAdmin && order.status !== "selesai" && order.payment.status === "paid" && (
           <button onClick={advance} className="btn-secondary btn-sm mt-5" data-track="advance-order">
-            ▶ Simulasikan tahap berikutnya
+            ▶ Simulasikan tahap berikutnya (admin)
           </button>
         )}
       </div>
@@ -163,7 +179,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             Ulasanmu membantu pembeli lain — tayang di halaman produk setelah dimoderasi.
           </p>
           <div className="mt-4 space-y-4">
-            {order.items.filter((it) => !it.productId.startsWith("custom")).map((it, i) => (
+            {order.items.filter((it) => it.productId && !it.productId.startsWith("custom")).map((it, i) => (
               <ReviewForm key={i} orderId={order.id} listingId={it.productId} title={it.title} />
             ))}
           </div>
@@ -190,6 +206,12 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
           <div className="mt-4 space-y-1 border-t border-ink/8 pt-3 text-sm">
             <div className="flex justify-between"><span className="text-ink/60">Subtotal</span><span>{rupiah(order.subtotal)}</span></div>
             <div className="flex justify-between"><span className="text-ink/60">Ongkir ({order.shipping.courier})</span><span>{rupiah(order.shipping.cost)}</span></div>
+            {order.discount > 0 && (
+              <div className="flex justify-between text-jade-800">
+                <span>Diskon{order.voucherCode && ` (${order.voucherCode})`}</span>
+                <span>− {rupiah(order.discount)}</span>
+              </div>
+            )}
             <div className="flex justify-between font-extrabold"><span>Total</span><span className="text-jade-800">{rupiah(order.total)}</span></div>
             <p className="pt-1 text-xs text-ink/45">
               Pembayaran: {order.payment.method} · {order.payment.status === "paid" ? "LUNAS" : "MENUNGGU"} · ref {order.payment.ref}
@@ -201,7 +223,13 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
           <div className="card p-5">
             <p className="font-bold">Dikirim ke</p>
             <p className="mt-2 text-sm font-semibold">{order.customer.name} · {order.customer.phone}</p>
-            <p className="text-sm text-ink/60">{order.customer.address}, {order.customer.city}</p>
+            <p className="text-sm text-ink/60">
+              {order.customer.address}, {order.customer.city}
+              {order.customer.postal && ` ${order.customer.postal}`}
+            </p>
+            {order.customer.email && <p className="mt-1 text-xs text-ink/50">{order.customer.email}</p>}
+            {order.notes && <p className="mt-2 rounded-lg bg-cream px-2 py-1 text-xs text-ink/70">Catatan: {order.notes}</p>}
+            {isAdmin && order.username && <p className="mt-2 text-xs text-ink/45">Akun pemesan: @{order.username}</p>}
           </div>
           <div className="card p-5">
             <p className="font-bold">Riwayat</p>
@@ -219,6 +247,13 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
       </div>
+      {paying && (
+        <PaymentModal
+          order={order}
+          onClose={() => { setPaying(false); load(); }}
+          onPaid={() => { setPaying(false); load(); }}
+        />
+      )}
     </div>
   );
 }

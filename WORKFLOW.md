@@ -37,8 +37,8 @@ Tech stack:
 
 | Peran | URL | Akses | Fungsi |
 |---|---|---|---|
-| **Tamu / Pelanggan** | `/`, `/products`, `/product/[id]`, `/cart`, `/checkout`, `/order/[id]` | publik (guest checkout boleh) | Belanja end-to-end |
-| **Pelanggan** | `/profile`, `/studio` | login | Profil, desain custom pribadi |
+| **Tamu / Pelanggan** | `/`, `/products`, `/product/[id]`, `/cart` | publik | Jelajah & keranjang |
+| **Pelanggan** | `/checkout`, `/order/[id]`, `/pesanan`, `/profile`, `/studio` | login | Checkout, pesanan saya, profil, desain custom |
 | **Kreator / Toko** | `/designer`, `/designer/studio` | kreator, admin | Dashboard royalti + Studio Mockup |
 | **Admin** | `/admin` | admin | Analitik, perilaku pelanggan, performa, moderasi |
 
@@ -85,6 +85,21 @@ Beranda ──► Jelajah (/products) ──► Detail produk ──► Keranjan
    memanggil `PATCH /api/orders/[id] {action:"pay"}` (pengganti webhook notifikasi gateway).
 5. **Lacak pesanan** — timeline `menunggu-pembayaran → dibayar → produksi → dikirim → selesai`.
    Tombol *"Simulasikan tahap berikutnya"* memajukan status untuk demo.
+
+### Keranjang & checkout
+
+- **Beberapa ukuran sekaligus**: di halaman produk, "Beli beberapa ukuran sekaligus" → atur jumlah
+  per ukuran (mis. 2×M + 1×XL) → masuk keranjang sebagai baris terpisah. Di keranjang, ukuran tiap
+  baris bisa diganti; bila ukuran itu sudah ada, barisnya digabung.
+- **Checkout** (`/checkout`, wajib login): data penerima (nama, WhatsApp, email, alamat, kota, kode
+  pos, catatan kurir) terisi dari profil + opsi simpan ke profil; pilih kurir; **voucher**; ringkasan
+  subtotal/ongkir/diskon/total diambil dari `POST /api/checkout/quote` (harga dihitung server).
+- Setelah pesanan dibuat keranjang dikosongkan; popup pembayaran bisa ditutup ("bayar nanti") dan
+  pesanan dibayar dari halaman pesanan. Riwayat di **`/pesanan`** (menu akun → Pesanan saya).
+- **Admin** → tab **Pesanan** (filter status, cari no./nama/email/@akun, detail alamat & item,
+  tombol *Majukan*) dan tab **Voucher** (buat, aktif/nonaktif, pemakaian).
+- **Kreator** → bagian **Pesanan masuk** di `/designer`: item yang memuat produknya, ukuran & jumlah,
+  nama depan + kota pembeli, royalti (tercatat saat lunas, estimasi sebelum itu).
 
 ## Alur 2 — Kreator (designer/store)
 
@@ -160,7 +175,11 @@ components/Monitor.tsx
 | Endpoint | Method | Fungsi |
 |---|---|---|
 | `/api/auth/*` | `POST` / `GET` | `signup`, `login`, `logout`, `me`, `providers`, `verify-email`, `verify-email/resend`, `password/forgot`, `password/reset`, `google/start`, `google/callback` |
-| `/api/orders` | `POST` / `GET` | Buat pesanan (guest/login) / daftar pesanan (admin) |
+| `/api/checkout/quote` | `POST` | Ringkasan harga dari server (login) |
+| `/api/orders` | `POST` / `GET` | Buat pesanan (login) / daftar pesanan (admin) |
+| `/api/orders/mine` | `GET` | Pesanan saya |
+| `/api/designer/orders` | `GET` | Pesanan masuk kreator |
+| `/api/vouchers` | `GET` / `POST` / `PATCH` | Kelola voucher (admin) |
 | `/api/orders/[id]` | `GET` / `PATCH` | Detail / `{action:"pay"}` (≈ webhook gateway; juga membukukan **royalti kreator** + counter terjual), `{action:"advance"}` (simulasi produksi) |
 | `/api/designs` | `GET` / `POST` / `PATCH` | Daftar / ajukan desain / moderasi (`disetujui`/`ditolak`) |
 | `/api/track` | `POST` / `GET` | Rekam / baca event perilaku |

@@ -51,10 +51,15 @@ export type CartLine = {
 export type Order = {
   id: string;
   createdAt: number;
-  customer: { name: string; email: string; phone: string; address: string; city: string };
+  userId?: string;
+  username?: string; // akun pemesan (kosong = pesanan guest lama)
+  customer: { name: string; email: string; phone: string; address: string; city: string; postal: string };
+  notes?: string;
   items: CartLine[];
   subtotal: number;
   shipping: { courier: string; cost: number };
+  discount: number;
+  voucherCode?: string;
   total: number;
   payment: { method: string; status: "pending" | "paid"; ref: string; paidAt?: number };
   status: "menunggu-pembayaran" | "dibayar" | "produksi" | "dikirim" | "selesai";
@@ -84,6 +89,7 @@ export type Profile = {
   phone: string;
   address: string;
   city: string;
+  postal: string;
   preferredPayment: string;
   preferredCourier: string;
   settings: Record<string, unknown>;
@@ -145,4 +151,77 @@ export type SessionUser = {
     rating: number;
     avatarUri: string;
   };
+};
+
+// ---- checkout (backend internal/api/checkout.go) ----------------------------
+
+export type Courier = { id: string; label: string; eta: string; cost: number };
+
+export type QuoteLine = {
+  productId: string;
+  title: string;
+  type: string;
+  color: string;
+  size: string;
+  qty: number;
+  price: number; // harga satuan dari server
+  lineTotal: number;
+  designUri?: string;
+};
+
+// Ringkasan harga yang dihitung server — angka ini yang ditagih.
+export type Quote = {
+  items: QuoteLine[];
+  subtotal: number;
+  courier: Courier;
+  shipping: number;
+  discount: number;
+  total: number;
+  voucher?: { code: string; description: string; kind: "percent" | "fixed" | "shipping" };
+  voucherError?: string;
+  couriers: Courier[];
+};
+
+export type Voucher = {
+  code: string;
+  description: string;
+  kind: "percent" | "fixed" | "shipping";
+  value: number;
+  minSubtotal: number;
+  maxDiscount?: number;
+  startsAt?: number;
+  endsAt?: number;
+  usageLimit?: number;
+  perUserLimit: number;
+  active: boolean;
+  used: number;
+  discountSum: number;
+};
+
+// Item pesanan yang memuat produk kreator (GET /api/designer/orders).
+export type CreatorOrderItem = {
+  orderId: string;
+  createdAt: number;
+  status: Order["status"];
+  paymentStatus: "pending" | "paid" | "expired" | "failed";
+  listingId: string;
+  title: string;
+  type: string;
+  color: string;
+  size: string;
+  qty: number;
+  unitPrice: number;
+  designUri?: string;
+  royalty: number;
+  royaltyBooked: boolean;
+  buyer: string; // nama depan + inisial
+  city: string;
+};
+
+export type CreatorOrderSummary = {
+  orders: number;
+  units: number;
+  paidUnits: number;
+  royaltyBooked: number;
+  royaltyPending: number;
 };

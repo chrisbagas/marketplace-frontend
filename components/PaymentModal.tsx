@@ -214,7 +214,7 @@ export default function PaymentModal({
 
         {step !== "done" && (
           <button onClick={onClose} className="border-t border-ink/8 py-3 text-sm font-semibold text-ink/50 hover:text-ink">
-            Batalkan
+            Tutup — bayar nanti
           </button>
         )}
       </div>

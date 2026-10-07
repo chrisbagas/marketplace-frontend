@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import Mockup from "@/components/Mockup";
+import CreatorOrders from "@/components/designer/CreatorOrders";
 import { StatTile, LineChart } from "@/components/charts";
 import { COLORS, PRODUCT_TYPES } from "@/lib/data";
 import { getProducts } from "@/lib/api";
@@ -103,6 +104,8 @@ export default function DesignerDashboard() {
           </div>
         </div>
       </div>
+
+      {ME.id && <CreatorOrders />}
 
       {/* submissions from the studio */}
       <section className="mt-10">
