@@ -150,7 +150,7 @@ export default async function HomePage() {
             <h2 className="text-3xl font-extrabold tracking-tight">Punya desain? Jadikan penghasilan.</h2>
             <p className="mt-3 text-white/70">
               Unggah karyamu, pratinjau langsung di kaos, hoodie, mug, dan totebag lewat Studio Mockup — kami yang urus
-              produksi, pembayaran, dan pengiriman. Kamu terima royalti hingga 30%.
+              produksi, pembayaran, dan pengiriman. Kamu tentukan sendiri margin di atas harga dasar — itu royaltimu.
             </p>
             <Link href="/designer/studio" className="btn-primary mt-6 bg-coral-500 hover:bg-coral-600" data-track="cta-studio">
               Coba Studio Mockup →

@@ -34,7 +34,13 @@ export const PAYOUT_STATUS: Record<PayoutStatus, { label: string; chip: string }
 
 export const maskAccount = (acc: string) => (acc.length > 4 ? `•••• ${acc.slice(-4)}` : acc);
 
-export type DesignerPayouts = { balance: PayoutBalance; bank: BankAccount | null; payouts: Payout[]; minimum: number };
+export type DesignerPayouts = {
+  balance: PayoutBalance;
+  bank: BankAccount | null;
+  payouts: Payout[];
+  minimum: number;
+  daily: { date: string; amount: number }[]; // royalti dibukukan per hari, 14 hari terakhir
+};
 
 export async function getDesignerPayouts(): Promise<DesignerPayouts> {
   return json<DesignerPayouts>(await fetch("/api/designer/payouts", { cache: "no-store" }));

@@ -5,6 +5,7 @@ import Mockup from "@/components/Mockup";
 import OrdersPanel from "@/components/admin/OrdersPanel";
 import VouchersPanel from "@/components/admin/VouchersPanel";
 import PayoutsPanel from "@/components/admin/PayoutsPanel";
+import FinancePanel from "@/components/admin/FinancePanel";
 import { StatTile, LineChart, HBarList, Funnel, VitalTile } from "@/components/charts";
 import { COLORS } from "@/lib/data";
 import { rupiah, compact, timeAgo, fmtDate } from "@/lib/format";
@@ -25,7 +26,7 @@ type Stats = {
   pendingDesigns: number;
 };
 
-const TABS = ["Ringkasan", "Pesanan", "Penarikan", "Voucher", "Perilaku Pelanggan", "Performa", "Moderasi"] as const;
+const TABS = ["Ringkasan", "Pesanan", "Keuangan", "Penarikan", "Voucher", "Perilaku Pelanggan", "Performa", "Moderasi"] as const;
 
 const EVENT_LABEL: Record<string, { icon: string; text: (e: Stats["recentEvents"][number]) => string }> = {
   page_view: { icon: "👁️", text: (e) => `Membuka halaman ${e.page}` },
@@ -285,6 +286,7 @@ export default function AdminPage() {
 
       {/* ---- Moderasi ---- */}
       {tab === "Pesanan" && <OrdersPanel />}
+      {tab === "Keuangan" && <FinancePanel />}
       {tab === "Penarikan" && <PayoutsPanel />}
       {tab === "Voucher" && <VouchersPanel />}
 

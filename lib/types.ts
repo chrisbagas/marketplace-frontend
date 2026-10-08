@@ -263,3 +263,53 @@ export type Payout = {
   reference?: string;
   note?: string;
 };
+
+// Keuangan platform (GET /api/finance, GET /api/producers) — admin.
+export type FinanceFlow = {
+  orders: number;
+  received: number; // dibayar pembeli (setelah diskon)
+  subtotal: number;
+  shipping: number;
+  discount: number; // voucher, ditanggung platform
+  production: number; // hak produsen: biaya produksi
+  shippingCost: number; // hak produsen: ongkir
+  creators: number; // royalti kreator
+  gatewayFees: number; // estimasi biaya Midtrans
+  platformIncome: number;
+};
+
+export type FinanceOwed = {
+  producersReady: number;
+  producersInProduction: number;
+  creatorsHeld: number;
+  creatorsAvailable: number;
+  cashEstimate: number;
+  platformCash: number;
+};
+
+export type ProductCost = { id: string; label: string; basePrice: number; productionCost: number };
+
+export type ProducerCharge = {
+  orderId: string;
+  orderStatus: Order["status"];
+  paidAt: number;
+  items: number;
+  production: number;
+  shipping: number;
+  ready: boolean;
+};
+
+export type ProducerPayout = { id: number; amount: number; reference: string; note?: string; createdAt: number };
+
+export type Producer = {
+  id: string;
+  name: string;
+  contact: string;
+  bank?: BankAccount;
+  active: boolean;
+  products: ProductCost[];
+  ready: number;
+  inProduction: number;
+  charges: ProducerCharge[];
+  payouts: ProducerPayout[];
+};
