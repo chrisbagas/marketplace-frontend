@@ -236,3 +236,30 @@ export type CreatorOrderSummary = {
   royaltyBooked: number;
   royaltyPending: number;
 };
+
+// Penarikan saldo kreator (GET /api/designer/payouts, GET /api/payouts).
+export type PayoutStatus = "diminta" | "diproses" | "dibayar" | "ditolak";
+
+export type BankAccount = { bankName: string; account: string; holder: string };
+
+export type PayoutBalance = {
+  pending: number; // royalti dari pesanan dibayar yang belum selesai
+  available: number; // bisa ditarik sekarang
+  inProcess: number; // pengajuan diminta/diproses
+  withdrawn: number; // sudah ditransfer
+  released: number; // total royalti dari pesanan selesai
+};
+
+export type Payout = {
+  id: number;
+  designerId: string;
+  designerName?: string;
+  amount: number;
+  status: PayoutStatus;
+  requestedAt: number;
+  processedAt?: number;
+  paidAt?: number;
+  bank?: BankAccount;
+  reference?: string;
+  note?: string;
+};

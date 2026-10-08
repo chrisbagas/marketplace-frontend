@@ -5,10 +5,12 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import Mockup from "@/components/Mockup";
 import CreatorOrders from "@/components/designer/CreatorOrders";
+import Payouts from "@/components/designer/Payouts";
 import { StatTile, LineChart } from "@/components/charts";
 import { COLORS, PRODUCT_TYPES } from "@/lib/data";
 import { getProducts } from "@/lib/api";
 import { useSession } from "@/lib/auth";
+import { getDesignerPayouts, type DesignerPayouts } from "@/lib/payouts";
 import { rupiah, compact, timeAgo } from "@/lib/format";
 import type { DesignSubmission, DayStat, Product } from "@/lib/types";
 
@@ -27,6 +29,7 @@ export default function DesignerDashboard() {
   const [subs, setSubs] = useState<DesignSubmission[]>([]);
   const [myListings, setMyListings] = useState<Product[]>([]);
   const [editing, setEditing] = useState<Product | null>(null);
+  const [payouts, setPayouts] = useState<DesignerPayouts | null>(null);
   const { user } = useSession();
   const ME = user?.designer ?? {
     id: "",
@@ -38,6 +41,8 @@ export default function DesignerDashboard() {
     avatarUri: "",
   };
 
+  const loadPayouts = () => (ME.id ? getDesignerPayouts().then(setPayouts).catch(() => {}) : undefined);
+
   const loadListings = () =>
     ME.id ? getProducts({ designer: ME.id }).then(setMyListings).catch(() => {}) : setMyListings([]);
 
@@ -45,6 +50,7 @@ export default function DesignerDashboard() {
     if (!user) return;
     fetch("/api/stats").then((r) => r.json()).then((d) => setDays(d.days ?? []));
     loadListings();
+    loadPayouts();
     const loadSubs = () => fetch("/api/designs").then((r) => r.json()).then((d) => setSubs(d.designs ?? []));
     loadSubs();
     const t = setInterval(loadSubs, 8000);
@@ -53,11 +59,6 @@ export default function DesignerDashboard() {
   }, [user?.id, ME.id]);
   const totalSold = myListings.reduce((a, l) => a + l.sold, 0);
   const royalty = days.map((d) => ({ label: d.date.slice(5), value: Math.round(d.revenue * ROYALTY_SHARE * 0.34) }));
-  const balance = royalty.reduce((a, r) => a + r.value, 0);
-  const spark = royalty.map((r) => r.value);
-  const half = Math.floor(royalty.length / 2);
-  const recent = spark.slice(half).reduce((a, b) => a + b, 0);
-  const prev = spark.slice(0, half).reduce((a, b) => a + b, 0) || 1;
 
   if (!user) return <div className="mx-auto h-96 max-w-6xl animate-pulse px-4 py-10" />;
 
@@ -77,7 +78,7 @@ export default function DesignerDashboard() {
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Saldo royalti (14 hari)" value={rupiah(balance)} delta={((recent - prev) / prev) * 100} spark={spark} />
+        <StatTile label="Saldo bisa ditarik" value={payouts ? rupiah(payouts.balance.available) : "—"} />
         <StatTile label="Total produk terjual" value={compact(totalSold)} />
         <StatTile label="Desain aktif" value={String(myListings.length + subs.filter((s) => s.status === "disetujui").length)} />
         <StatTile label="Rating tokomu" value={`★ ${ME.rating}`} />
@@ -92,17 +93,11 @@ export default function DesignerDashboard() {
           )}
         </div>
 
-        <div className="card h-fit p-5">
-          <p className="font-bold">Penarikan dana</p>
-          <p className="mt-2 text-2xl font-extrabold text-jade-800">{rupiah(balance)}</p>
-          <p className="text-xs text-ink/50">tersedia untuk ditarik</p>
-          <button className="btn-secondary btn-sm mt-4 w-full" onClick={() => alert("Demo: penarikan dana ke rekening BCA •••• 4521 diproses 1–2 hari kerja.")}>
-            Tarik ke BCA •••• 4521
-          </button>
-          <div className="mt-4 border-t border-ink/8 pt-3 text-xs text-ink/55">
-            <p>💡 Tips: desain bertema <b>senja</b> dan <b>batik</b> sedang naik 30% pencariannya minggu ini.</p>
-          </div>
-        </div>
+        {ME.id ? (
+          <Payouts data={payouts} reload={loadPayouts} />
+        ) : (
+          <div className="card h-fit p-5 text-sm text-ink/55">Penarikan dana tersedia untuk akun kreator dengan profil toko.</div>
+        )}
       </div>
 
       {ME.id && <CreatorOrders />}

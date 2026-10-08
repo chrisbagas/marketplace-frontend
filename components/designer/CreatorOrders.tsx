@@ -27,7 +27,7 @@ export default function CreatorOrders() {
     <section className="mt-10">
       <h2 className="text-xl font-extrabold tracking-tight">Pesanan masuk</h2>
       <p className="mt-0.5 text-sm text-ink/55">
-        Produk tokomu yang sudah di-checkout pembeli. Royalti tercatat begitu pembayaran lunas.
+        Produk tokomu yang sudah di-checkout pembeli. Royalti tercatat begitu pembayaran lunas, dan bisa ditarik setelah pesanan selesai.
       </p>
 
       {s && (
