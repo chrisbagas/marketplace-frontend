@@ -1,13 +1,18 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
+import { SENTRY_DSN } from "@/lib/sentry";
 
 // Last-resort boundary for render errors in the root layout. It replaces the
-// layout, so it renders its own <html>. No-op reporting when Sentry is off.
+// layout, so it renders its own <html>. The SDK is imported lazily (see
+// instrumentation-client.ts) so it stays out of the first-load bundle; with no
+// DSN at build time nothing is loaded.
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    if (!SENTRY_DSN) return;
+    import("@sentry/nextjs")
+      .then((Sentry) => Sentry.captureException(error))
+      .catch(() => {});
   }, [error]);
 
   return (

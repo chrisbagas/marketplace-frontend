@@ -30,4 +30,9 @@ export default withSentryConfig(nextConfig, {
   sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
   // Errors only (tracesSampleRate is 0): drop tracing code and SDK debug logging to keep the bundle small.
   bundleSizeOptimizations: { excludeTracing: true, excludeDebugStatements: true },
+  // The route manifest only groups tracing transactions by route; tracing is off,
+  // so keep it (and the list of admin routes) out of the shared client bundle.
+  routeManifestInjection: false,
+  // instrumentation-client.ts loads the SDK lazily and skips this tracing hook on purpose.
+  suppressOnRouterTransitionStartWarning: true,
 });
