@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Mockup, { PHOTO_CREDIT, PRINT_CM, photoInfo, viewsFor, type MockupView } from "@/components/Mockup";
-import { getCategories, type Category } from "@/lib/api";
+import { getTaxonomy, type FacetAttribute } from "@/lib/search";
 import { COLORS, DESIGNS, PRODUCT_TYPES, type ProductType } from "@/lib/data";
 import { rupiah } from "@/lib/format";
 import { track } from "@/lib/track";
@@ -21,8 +21,8 @@ export default function StudioPage() {
   const [widthCm, setWidthCm] = useState(24);
   const [offsetCm, setOffsetCm] = useState(0);
   const [margin, setMargin] = useState(34000);
-  const [cats, setCats] = useState<Category[]>([]);
-  const [selCats, setSelCats] = useState<string[]>([]);
+  const [attributes, setAttributes] = useState<FacetAttribute[]>([]);
+  const [selAttrs, setSelAttrs] = useState<string[]>([]);
   const [tagsInput, setTagsInput] = useState("");
   const [sent, setSent] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -41,13 +41,16 @@ export default function StudioPage() {
     // deep-link support: /designer/studio?view=model|photo-model|photo-flat
     const v = new URLSearchParams(window.location.search).get("view");
     if (v && ["flat", "model", "photo-flat", "photo-model"].includes(v)) setView(v as MockupView);
-    getCategories().then(setCats).catch(() => {});
+    getTaxonomy().then((t) => setAttributes(t.attributes)).catch(() => {});
   }, []);
 
-  function toggleCat(id: string) {
-    setSelCats((cur) =>
-      cur.includes(id) ? cur.filter((c) => c !== id) : cur.length >= 3 ? cur : [...cur, id]
-    );
+  // each attribute (Tema, Gaya, Acara) has its own limit per design
+  function toggleAttr(attr: FacetAttribute, id: string) {
+    setSelAttrs((cur) => {
+      if (cur.includes(id)) return cur.filter((c) => c !== id);
+      const picked = cur.filter((c) => attr.values.some((v) => v.id === c)).length;
+      return picked >= attr.max ? cur : [...cur, id];
+    });
   }
 
   function pickType(t: ProductType) {
@@ -100,7 +103,7 @@ export default function StudioPage() {
         color: colorId,
         price,
         uri: designUri,
-        categories: selCats,
+        attributes: selAttrs,
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
       }),
     });
@@ -188,25 +191,31 @@ export default function StudioPage() {
           </section>
 
           <section className="card p-5">
-            <p className="font-bold">4 · Kategori & tag</p>
-            <p className="mt-1 text-xs text-ink/50">Kategori membantu pembeli menjelajah (maks 3); tag bebas ala hashtag untuk pencarian.</p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {cats.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => toggleCat(c.id)}
-                  className={`chip border text-xs transition ${
-                    selCats.includes(c.id)
-                      ? "border-jade-700 bg-jade-700 text-white"
-                      : "border-ink/12 bg-white text-ink/60 hover:border-ink/30"
-                  }`}
-                >
-                  {c.emoji} {c.label}
-                </button>
-              ))}
-            </div>
-            <label className="label mt-3" htmlFor="tags">Tag (pisahkan dengan koma)</label>
+            <p className="font-bold">4 · Tema, gaya & tag</p>
+            <p className="mt-1 text-xs text-ink/50">Pembeli memfilter dan mencari lewat pilihan ini — pilih yang benar-benar menggambarkan desainmu.</p>
+            {attributes.map((a) => (
+              <div key={a.id} className="mt-3">
+                <p className="text-xs font-semibold text-ink/60">{a.label} <span className="font-normal text-ink/40">(maks {a.max})</span></p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {a.values.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => toggleAttr(a, v.id)}
+                      aria-pressed={selAttrs.includes(v.id)}
+                      className={`chip border text-xs transition ${
+                        selAttrs.includes(v.id)
+                          ? "border-jade-700 bg-jade-700 text-white"
+                          : "border-ink/12 bg-white text-ink/60 hover:border-ink/30"
+                      }`}
+                    >
+                      {v.emoji} {v.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <label className="label mt-3" htmlFor="tags">Tag bebas (maks 13, pisahkan dengan koma)</label>
             <input
               id="tags"
               className="input"

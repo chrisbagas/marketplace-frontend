@@ -108,6 +108,9 @@ export const ORDER_STATUS: Record<Order["status"], { label: string; chip: string
   dikirim: { label: "Dikirim", chip: "bg-jade-100 text-jade-800" },
   tiba: { label: "Tiba — tunggu konfirmasi", chip: "bg-sun-100 text-sun-600" },
   selesai: { label: "Selesai", chip: "bg-ink/8 text-ink/60" },
+  dibatalkan: { label: "Dibatalkan", chip: "bg-coral-100 text-coral-600" },
 };
 
 export const ORDER_STATUSES = Object.keys(ORDER_STATUS) as Order["status"][];
+// urutan alur normal (tanpa "dibatalkan") untuk stepper
+export const ORDER_FLOW: Order["status"][] = ORDER_STATUSES.filter((s) => s !== "dibatalkan");

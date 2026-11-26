@@ -5,16 +5,19 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import Mockup from "@/components/Mockup";
 import CreatorOrders from "@/components/designer/CreatorOrders";
+import Payouts from "@/components/designer/Payouts";
 import { StatTile, LineChart } from "@/components/charts";
 import { COLORS, PRODUCT_TYPES } from "@/lib/data";
 import { getProducts } from "@/lib/api";
 import { useSession } from "@/lib/auth";
+import { getDesignerPayouts, type DesignerPayouts } from "@/lib/payouts";
 import { rupiah, compact, timeAgo } from "@/lib/format";
-import type { DesignSubmission, DayStat, Product } from "@/lib/types";
+import type { DesignSubmission, Product } from "@/lib/types";
 
 // Dashboard milik kreator yang sedang login (profil toko dari /api/auth/me).
 // Admin juga boleh membuka halaman ini; tanpa profil toko, daftar produknya kosong.
-const ROYALTY_SHARE = 0.12;
+// Pendapatan kreator per item = harga jual − harga dasar produk (margin yang ia tentukan sendiri).
+const margin = (l: { type: keyof typeof PRODUCT_TYPES; price: number }) => Math.max(0, l.price - PRODUCT_TYPES[l.type].base);
 
 const STATUS_CHIP: Record<string, string> = {
   review: "bg-sun-100 text-sun-600",
@@ -23,10 +26,10 @@ const STATUS_CHIP: Record<string, string> = {
 };
 
 export default function DesignerDashboard() {
-  const [days, setDays] = useState<DayStat[]>([]);
   const [subs, setSubs] = useState<DesignSubmission[]>([]);
   const [myListings, setMyListings] = useState<Product[]>([]);
   const [editing, setEditing] = useState<Product | null>(null);
+  const [payouts, setPayouts] = useState<DesignerPayouts | null>(null);
   const { user } = useSession();
   const ME = user?.designer ?? {
     id: "",
@@ -38,13 +41,15 @@ export default function DesignerDashboard() {
     avatarUri: "",
   };
 
+  const loadPayouts = () => (ME.id ? getDesignerPayouts().then(setPayouts).catch(() => {}) : undefined);
+
   const loadListings = () =>
     ME.id ? getProducts({ designer: ME.id }).then(setMyListings).catch(() => {}) : setMyListings([]);
 
   useEffect(() => {
     if (!user) return;
-    fetch("/api/stats").then((r) => r.json()).then((d) => setDays(d.days ?? []));
     loadListings();
+    loadPayouts();
     const loadSubs = () => fetch("/api/designs").then((r) => r.json()).then((d) => setSubs(d.designs ?? []));
     loadSubs();
     const t = setInterval(loadSubs, 8000);
@@ -52,12 +57,7 @@ export default function DesignerDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, ME.id]);
   const totalSold = myListings.reduce((a, l) => a + l.sold, 0);
-  const royalty = days.map((d) => ({ label: d.date.slice(5), value: Math.round(d.revenue * ROYALTY_SHARE * 0.34) }));
-  const balance = royalty.reduce((a, r) => a + r.value, 0);
-  const spark = royalty.map((r) => r.value);
-  const half = Math.floor(royalty.length / 2);
-  const recent = spark.slice(half).reduce((a, b) => a + b, 0);
-  const prev = spark.slice(0, half).reduce((a, b) => a + b, 0) || 1;
+  const royalty = (payouts?.daily ?? []).map((d) => ({ label: d.date.slice(5), value: d.amount }));
 
   if (!user) return <div className="mx-auto h-96 max-w-6xl animate-pulse px-4 py-10" />;
 
@@ -77,7 +77,7 @@ export default function DesignerDashboard() {
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Saldo royalti (14 hari)" value={rupiah(balance)} delta={((recent - prev) / prev) * 100} spark={spark} />
+        <StatTile label="Saldo bisa ditarik" value={payouts ? rupiah(payouts.balance.available) : "—"} />
         <StatTile label="Total produk terjual" value={compact(totalSold)} />
         <StatTile label="Desain aktif" value={String(myListings.length + subs.filter((s) => s.status === "disetujui").length)} />
         <StatTile label="Rating tokomu" value={`★ ${ME.rating}`} />
@@ -86,23 +86,17 @@ export default function DesignerDashboard() {
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="card p-5" style={{ background: "var(--viz-surface)" }}>
           <p className="font-bold">Royalti harian — 14 hari terakhir</p>
-          <p className="mb-3 text-xs" style={{ color: "var(--viz-ink-2)" }}>Estimasi {Math.round(ROYALTY_SHARE * 100)}% dari harga jual setiap item</p>
+          <p className="mb-3 text-xs" style={{ color: "var(--viz-ink-2)" }}>Royalti tercatat dari pesanan yang dibayar (harga jual − harga dasar)</p>
           {royalty.length > 1 && (
             <LineChart points={royalty} format={rupiah} compactFormat={(v) => (v >= 1e6 ? `${(v / 1e6).toFixed(1)}jt` : `${Math.round(v / 1000)}rb`)} />
           )}
         </div>
 
-        <div className="card h-fit p-5">
-          <p className="font-bold">Penarikan dana</p>
-          <p className="mt-2 text-2xl font-extrabold text-jade-800">{rupiah(balance)}</p>
-          <p className="text-xs text-ink/50">tersedia untuk ditarik</p>
-          <button className="btn-secondary btn-sm mt-4 w-full" onClick={() => alert("Demo: penarikan dana ke rekening BCA •••• 4521 diproses 1–2 hari kerja.")}>
-            Tarik ke BCA •••• 4521
-          </button>
-          <div className="mt-4 border-t border-ink/8 pt-3 text-xs text-ink/55">
-            <p>💡 Tips: desain bertema <b>senja</b> dan <b>batik</b> sedang naik 30% pencariannya minggu ini.</p>
-          </div>
-        </div>
+        {ME.id ? (
+          <Payouts data={payouts} reload={loadPayouts} />
+        ) : (
+          <div className="card h-fit p-5 text-sm text-ink/55">Penarikan dana tersedia untuk akun kreator dengan profil toko.</div>
+        )}
       </div>
 
       {ME.id && <CreatorOrders />}
@@ -150,7 +144,7 @@ export default function DesignerDashboard() {
                 <th className="p-3 font-semibold">Harga</th>
                 <th className="p-3 font-semibold">Terjual</th>
                 <th className="p-3 font-semibold">Rating</th>
-                <th className="p-3 font-semibold">Estimasi royalti</th>
+                <th className="p-3 font-semibold">Royalti / pcs</th>
                 <th className="p-3 font-semibold" />
               </tr>
             </thead>
@@ -171,7 +165,7 @@ export default function DesignerDashboard() {
                   <td className="p-3">{rupiah(l.price)}</td>
                   <td className="p-3">{compact(l.sold)}</td>
                   <td className="p-3">★ {l.rating}</td>
-                  <td className="p-3 font-semibold text-jade-800">{rupiah(l.sold * l.price * ROYALTY_SHARE)}</td>
+                  <td className="p-3 font-semibold text-jade-800">{rupiah(margin(l))}</td>
                   <td className="p-3">
                     <button onClick={() => setEditing(l)} className="btn-secondary btn-sm" data-track={`edit-${l.id}`}>✎ Ubah</button>
                   </td>
@@ -243,7 +237,7 @@ function ListingEditor({ listing, onClose, onSaved }: { listing: Product; onClos
             value={price}
             onChange={(e) => setPrice(+e.target.value)}
           />
-          <p className="mt-1 text-xs text-ink/50">Royalti kamu ≈ {rupiah(Math.max(0, Math.round(price * ROYALTY_SHARE)))} per penjualan.</p>
+          <p className="mt-1 text-xs text-ink/50">Royalti kamu {rupiah(Math.max(0, price - pt.base))} per penjualan (harga jual − harga dasar).</p>
         </div>
         <div>
           <p className="label">Warna tersedia</p>

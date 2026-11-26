@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import SearchBox from "./SearchBox";
 import { cartCount } from "@/lib/cart";
 import { canAccess, logout, ROLE_LABEL, useSession } from "@/lib/auth";
 import type { SessionUser } from "@/lib/types";
@@ -59,7 +60,19 @@ export default function Header() {
           ))}
         </nav>
 
+        {/* the catalog page has its own, wider search field */}
+        {!pathname.startsWith("/products") && <SearchBox className="hidden min-w-0 max-w-sm flex-1 lg:block" />}
+
         <div className="ml-auto flex items-center gap-3">
+          <Link
+            href="/products"
+            className="rounded-full border border-ink/12 bg-white p-2.5 transition hover:border-ink/30 lg:hidden"
+            aria-label="Cari produk"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="7" /><path d="m21 21-4-4" />
+            </svg>
+          </Link>
           {loading ? (
             <span className="h-10 w-10 animate-pulse rounded-full bg-ink/5" />
           ) : user ? (
