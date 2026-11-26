@@ -26,3 +26,8 @@ Halaman kreator, admin, profil, dan Custom butuh login (`/login`). Akun demo, pa
 Email verifikasi & reset password di dev tertangkap di Mailpit: http://localhost:8025.
 
 Dokumentasi alur lengkap: [`WORKFLOW.md`](./WORKFLOW.md).
+
+## CI
+
+`.github/workflows/ci.yml` jalan di setiap PR ke `staging`/`main` dan di push ke `staging` (Node 22):
+`npm ci`, `npx tsc --noEmit`, `npx next build`. Build tidak butuh backend jalan.
