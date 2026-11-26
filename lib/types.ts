@@ -322,3 +322,10 @@ export type Producer = {
   charges: ProducerCharge[];
   payouts: ProducerPayout[];
 };
+
+// POST /api/uploads/complete: the file is in the bucket and checked.
+export type UploadedFile = {
+  url: string;
+  widthPx: number | null; // null for SVG
+  heightPx: number | null;
+};
