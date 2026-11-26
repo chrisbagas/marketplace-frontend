@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Monitor from "@/components/Monitor";
 import VerifyBanner from "@/components/VerifyBanner";
+import { SITE_URL } from "@/lib/site";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -12,9 +13,11 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "KaryaKita — Marketplace Print-on-Demand Karya Kreator Indonesia",
   description:
     "Kaos, hoodie, mug, dan totebag dengan desain orisinal kreator lokal. Dicetak sesuai pesanan, dikirim ke seluruh Indonesia.",
+  openGraph: { type: "website", siteName: "KaryaKita", locale: "id_ID" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

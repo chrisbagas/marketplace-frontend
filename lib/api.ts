@@ -24,3 +24,11 @@ export async function getProduct(id: string): Promise<Product | null> {
   if (!res.ok) throw new Error(`GET /api/products/${id} ${res.status}`);
   return (await res.json()).product;
 }
+
+// Approved-review summary of a listing (GET /api/reviews?listing=): count 0 = no reviews yet.
+export async function getReviewSummary(id: string): Promise<{ avg: number; count: number }> {
+  const res = await fetch(`${API_BASE}/api/reviews?listing=${encodeURIComponent(id)}`, { cache: "no-store" });
+  if (!res.ok) return { avg: 0, count: 0 };
+  const { avg, count } = await res.json();
+  return { avg: Number(avg) || 0, count: Number(count) || 0 };
+}
