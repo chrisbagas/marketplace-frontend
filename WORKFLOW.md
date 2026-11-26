@@ -30,6 +30,10 @@ Tech stack:
 - Frontend mem-proxy semua `/api/*` ke backend lewat `rewrites` di `next.config.ts`
   (default `http://localhost:8081`, bisa diubah via env `API_URL`) — kode FE cukup
   memanggil `fetch("/api/...")` tanpa CORS.
+- `next.config.ts` `headers()` mengirim header keamanan (HSTS, nosniff, X-Frame-Options,
+  Referrer-Policy, Permissions-Policy) dan `Content-Security-Policy-Report-Only` (pelanggaran
+  hanya dicatat di konsol browser). Env opsional `FILES_ORIGIN` (mis. `https://files.example.com`)
+  ditambahkan ke `img-src` bila gambar upload dilayani dari origin terpisah.
 
 ---
 
