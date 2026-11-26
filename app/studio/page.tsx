@@ -8,6 +8,8 @@ import { addToCart } from "@/lib/cart";
 import { rupiah } from "@/lib/format";
 import { track } from "@/lib/track";
 import { UPLOAD_HINT, uploadImage } from "@/lib/upload";
+import DpiBadge from "@/components/DpiBadge";
+import { LOW_DPI_MESSAGE, printBlocked } from "@/lib/printQuality";
 import type { UserDesign } from "@/lib/types";
 
 // Studio Custom untuk PEMBELI: desain sendiri, beli untuk dipakai sendiri.
@@ -24,6 +26,7 @@ export default function CustomStudioPage() {
   const [size, setSize] = useState("M");
   const [view, setView] = useState<MockupView>("flat");
   const [widthCm, setWidthCm] = useState(24);
+  const [widthPx, setWidthPx] = useState<number | null>(null); // pixel width of the uploaded raster; null = vector (no resolution rule)
   const [offsetCm, setOffsetCm] = useState(0);
   const [saved, setSaved] = useState<UserDesign[]>([]);
   const [notice, setNotice] = useState("");
@@ -38,6 +41,7 @@ export default function CustomStudioPage() {
   const photo = photoInfo(type, view, colorId);
   const minW = Math.ceil(phys.maxW / 3);
   const maxOffset = Math.max(1, Math.round(phys.maxH * 0.2));
+  const blocked = printBlocked(widthPx, widthCm);
 
   const loadSaved = () =>
     fetch("/api/user-designs").then((r) => r.json()).then((d) => setSaved(d.designs ?? [])).catch(() => {});
@@ -60,16 +64,20 @@ export default function CustomStudioPage() {
     if (!file) return;
     setError("");
     const previous = designUri;
+    const previousPx = widthPx;
     const preview = URL.createObjectURL(file); // pratinjau instan selagi diunggah
     setDesignUri(preview);
+    setWidthPx(null); // unknown until the server has measured the file
     setTitle(file.name.replace(/\.[^.]+$/, ""));
     track("click", { label: "custom-upload" });
     setUploading(0);
     try {
       const up = await uploadImage(file, "custom", { onProgress: setUploading });
       setDesignUri(up.url);
+      setWidthPx(up.widthPx);
     } catch (err) {
       setDesignUri(previous);
+      setWidthPx(previousPx);
       setError(err instanceof Error ? err.message : "Gagal mengunggah.");
     } finally {
       setUploading(null);
@@ -94,6 +102,7 @@ export default function CustomStudioPage() {
 
   function buy() {
     if (!designUri) return setError("Unggah desainmu dulu.");
+    if (blocked) return setError(`${LOW_DPI_MESSAGE} — perkecil lebar cetak atau unggah gambar yang lebih besar.`);
     setError("");
     addToCart({
       productId: `custom-${Date.now()}`,
@@ -113,6 +122,7 @@ export default function CustomStudioPage() {
 
   function pickSaved(d: UserDesign) {
     setDesignUri(d.uri);
+    setWidthPx(d.widthPx ?? null);
     setTitle(d.title);
     pickType(d.type as ProductType);
     setColor(d.color);
@@ -202,6 +212,7 @@ export default function CustomStudioPage() {
               <span>Lebar cetak</span><span className="text-jade-700">{widthCm.toFixed(1).replace(".0", "")} cm</span>
             </label>
             <input type="range" min={minW} max={phys.maxW} step="0.5" value={widthCm} onChange={(e) => setWidthCm(+e.target.value)} className="w-full accent-jade-700" />
+            <DpiBadge widthPx={widthPx} widthCm={widthCm} />
             <label className="label mt-3 flex justify-between">
               <span>Posisi vertikal</span>
               <span className="text-jade-700">{offsetCm > 0 ? `${offsetCm} cm ke bawah` : offsetCm < 0 ? `${-offsetCm} cm ke atas` : "tengah"}</span>
@@ -217,9 +228,14 @@ export default function CustomStudioPage() {
             </div>
             {error && <p className="mt-3 rounded-lg bg-coral-50 p-2 text-xs font-semibold text-coral-600">{error}</p>}
             {notice && <p className="mt-3 rounded-lg bg-jade-50 p-2 text-xs font-semibold text-jade-800">{notice}</p>}
+            {blocked && (
+              <p className="mt-3 rounded-lg bg-coral-50 p-2 text-xs font-semibold text-coral-600">
+                {LOW_DPI_MESSAGE} — perkecil lebar cetak atau unggah gambar yang lebih besar untuk bisa membeli.
+              </p>
+            )}
             <div className="mt-3 flex gap-2">
               <button onClick={saveToProfile} disabled={uploading !== null} className="btn-secondary flex-1 disabled:opacity-50" data-track="custom-save">💾 Simpan ke profil</button>
-              <button onClick={buy} disabled={uploading !== null} className="btn-primary flex-1 disabled:opacity-50" data-track="custom-buy">🛒 Beli · {rupiah(price)}</button>
+              <button onClick={buy} disabled={uploading !== null || blocked} className="btn-primary flex-1 disabled:opacity-50" data-track="custom-buy">🛒 Beli · {rupiah(price)}</button>
             </div>
             <p className="mt-2 text-center text-[11px] text-ink/45">Khusus pemakaian pribadi — tidak tayang di katalog, tanpa royalti.</p>
           </section>

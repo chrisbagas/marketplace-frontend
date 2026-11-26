@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Mockup from "@/components/Mockup";
 import { COLORS, type ProductType } from "@/lib/data";
+import { dpiLevel } from "@/lib/printQuality";
 import { advanceOrder, getOrder, markDelivered, markPaid, ORDER_FLOW, ORDER_STATUS, SHIPPING_CARRIERS, shipOrder } from "@/lib/orders";
 import { fmtCm, fmtDate, fmtPrintOffset, fmtTime, rupiah } from "@/lib/format";
 import type { Order } from "@/lib/types";
@@ -244,6 +245,18 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
                   <p className="mt-1 max-w-48 text-xs text-ink/60">
                     Lebar cetak <b className="text-ink">{fmtCm(it.widthCm)} cm</b> · {fmtPrintOffset(it.offsetYCm)}
                   </p>
+                  {it.dpi ? (
+                    <p
+                      className={`mt-1 inline-block rounded-md px-1.5 py-0.5 text-xs font-bold ${
+                        { low: "bg-coral-50 text-coral-600", ok: "bg-sun-50 text-sun-600", good: "bg-jade-50 text-jade-800" }[dpiLevel(it.dpi)]
+                      }`}
+                      title="Resolusi efektif file desain pada lebar cetak ini"
+                    >
+                      {it.dpi} DPI · {{ low: "berisiko buram", ok: "kurang tajam", good: "tajam" }[dpiLevel(it.dpi)]}
+                    </p>
+                  ) : (
+                    it.designUri && <p className="mt-1 text-xs text-ink/40">Vektor / resolusi tidak tercatat</p>
+                  )}
                 </div>
               </div>
             ))}

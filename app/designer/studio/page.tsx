@@ -7,6 +7,8 @@ import { getTaxonomy, type FacetAttribute } from "@/lib/search";
 import { COLORS, DESIGNS, PRODUCT_TYPES, type ProductType } from "@/lib/data";
 import { rupiah } from "@/lib/format";
 import { track } from "@/lib/track";
+import DpiBadge from "@/components/DpiBadge";
+import { LOW_DPI_MESSAGE, printBlocked } from "@/lib/printQuality";
 import { UPLOAD_HINT, uploadImage } from "@/lib/upload";
 
 // Studio Mockup: designers preview artwork on product flats, on real photos
@@ -20,6 +22,7 @@ export default function StudioPage() {
   const [color, setColor] = useState("putih");
   const [view, setView] = useState<MockupView>("flat");
   const [widthCm, setWidthCm] = useState(24);
+  const [widthPx, setWidthPx] = useState<number | null>(null); // pixel width of the uploaded raster; null = vector / sample (no resolution rule)
   const [offsetCm, setOffsetCm] = useState(0);
   const [margin, setMargin] = useState(34000);
   const [attributes, setAttributes] = useState<FacetAttribute[]>([]);
@@ -37,6 +40,7 @@ export default function StudioPage() {
   const photo = photoInfo(type, view, colorId);
   const minW = Math.ceil(phys.maxW / 3);
   const maxOffset = Math.max(1, Math.round(phys.maxH * 0.2));
+  const blocked = printBlocked(widthPx, widthCm);
 
   useEffect(() => {
     // deep-link support: /designer/studio?view=model|photo-model|photo-flat
@@ -69,16 +73,20 @@ export default function StudioPage() {
     if (!file) return;
     setError("");
     const previous = designUri;
+    const previousPx = widthPx;
     const preview = URL.createObjectURL(file); // pratinjau instan selagi diunggah
     setDesignUri(preview);
+    setWidthPx(null); // unknown until the server has measured the file
     setTitle(file.name.replace(/\.[^.]+$/, ""));
     track("click", { label: "studio-upload" });
     setUploading(0);
     try {
       const up = await uploadImage(file, "designs", { onProgress: setUploading });
       setDesignUri(up.url);
+      setWidthPx(up.widthPx);
     } catch (err) {
       setDesignUri(previous);
+      setWidthPx(previousPx);
       setError(err instanceof Error ? err.message : "Gagal mengunggah.");
     } finally {
       setUploading(null);
@@ -88,6 +96,7 @@ export default function StudioPage() {
 
   async function submit() {
     if (uploading !== null) return setError("Tunggu sampai unggahan selesai.");
+    if (blocked) return setError(`${LOW_DPI_MESSAGE} — perkecil lebar cetak atau unggah gambar yang lebih besar.`);
     setError("");
     const res = await fetch("/api/designs", {
       method: "POST",
@@ -130,7 +139,7 @@ export default function StudioPage() {
               {DESIGNS.map((d) => (
                 <button
                   key={d.id}
-                  onClick={() => { setDesignUri(d.uri); setTitle(d.title + " — Remix"); }}
+                  onClick={() => { setDesignUri(d.uri); setWidthPx(null); setTitle(d.title + " — Remix"); }}
                   className={`overflow-hidden rounded-xl border-2 bg-white p-1 transition ${designUri === d.uri ? "border-jade-700" : "border-transparent hover:border-ink/20"}`}
                   title={d.title}
                 >
@@ -180,6 +189,7 @@ export default function StudioPage() {
               <span>Lebar cetak</span><span className="text-jade-700">{widthCm.toFixed(1).replace(".0", "")} cm</span>
             </label>
             <input type="range" min={minW} max={phys.maxW} step="0.5" value={widthCm} onChange={(e) => setWidthCm(+e.target.value)} className="w-full accent-jade-700" />
+            <DpiBadge widthPx={widthPx} widthCm={widthCm} />
             <label className="label mt-3 flex justify-between">
               <span>Posisi vertikal</span>
               <span className="text-jade-700">{offsetCm > 0 ? `${offsetCm} cm ke bawah` : offsetCm < 0 ? `${-offsetCm} cm ke atas` : "tengah"}</span>
@@ -235,13 +245,18 @@ export default function StudioPage() {
               <span className="font-extrabold text-jade-800">{rupiah(price)}</span>
             </div>
             {error && <p className="mt-3 rounded-lg bg-coral-50 p-2 text-xs font-semibold text-coral-600">{error}</p>}
+            {blocked && !sent && (
+              <p className="mt-3 rounded-lg bg-coral-50 p-2 text-xs font-semibold text-coral-600">
+                {LOW_DPI_MESSAGE} — perkecil lebar cetak atau unggah gambar yang lebih besar untuk bisa mengajukan.
+              </p>
+            )}
             {sent ? (
               <div className="mt-4 rounded-xl bg-jade-50 p-3 text-sm">
                 <p className="font-bold text-jade-800">✓ Terkirim untuk kurasi!</p>
                 <p className="mt-1 text-ink/60">Tim admin akan meninjau desainmu. Pantau statusnya di <Link href="/designer" className="font-semibold text-jade-700 hover:underline">dashboard kreator</Link>.</p>
               </div>
             ) : (
-              <button onClick={submit} disabled={uploading !== null} className="btn-primary mt-4 w-full disabled:opacity-50" data-track="studio-submit">
+              <button onClick={submit} disabled={uploading !== null || blocked} className="btn-primary mt-4 w-full disabled:opacity-50" data-track="studio-submit">
                 Ajukan desain untuk dijual →
               </button>
             )}

@@ -51,6 +51,7 @@ export type CartLine = {
   designUri?: string;
   widthCm: number; // snapshot lebar cetak (cm) untuk vendor
   offsetYCm: number; // snapshot geser vertikal dari tengah area cetak (cm)
+  dpi?: number; // effective print resolution of the uploaded design at widthCm; absent = vector or unknown file
 };
 
 export type Order = {
@@ -124,6 +125,7 @@ export type UserDesign = {
   uri: string;
   widthCm: number;
   offsetYCm: number;
+  widthPx: number | null; // pixel width of the hosted raster upload; null = vector or unknown
 };
 
 export type Review = {
