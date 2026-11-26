@@ -69,6 +69,8 @@ export type Order = {
     paidAt?: number;
     expiresAt?: number; // batas bayar (saat menunggu pembayaran)
     gateway?: string;
+    // cara refund yang tersedia: kosong = transfer manual saja, partial = Midtrans (nominal bebas), full = Midtrans (hanya penuh)
+    refundMode?: "partial" | "full";
   };
   // data dari kurir — selalu ada bila status "dikirim" / "selesai"
   shipment?: { courier: string; trackingNumber: string; shippedAt: number; deliveredAt?: number };
@@ -76,6 +78,40 @@ export type Order = {
   completedAt?: number;
   status: "menunggu-pembayaran" | "dibayar" | "produksi" | "dikirim" | "tiba" | "selesai" | "dibatalkan";
   timeline: { status: string; t: number }[];
+  reprintOf?: string; // pesanan ini cetak ulang gratis dari pesanan lain
+  refunds: Refund[];
+  refunded: number;
+  complaint?: Complaint;
+};
+
+// Pengembalian dana (tabel refunds) dan komplain pembeli.
+export type Refund = {
+  id: number;
+  amount: number;
+  method: "gateway" | "manual";
+  reference: string; // refund_key Midtrans / no. referensi transfer
+  reason: string;
+  createdAt: number;
+};
+
+export type ComplaintReason = "cacat-cetak" | "salah-produk" | "rusak" | "tidak-sesuai" | "lainnya";
+export type ComplaintStatus = "terbuka" | "dicetak-ulang" | "direfund" | "ditolak";
+
+export type Complaint = {
+  id: number;
+  orderId: string;
+  reason: ComplaintReason;
+  description: string;
+  photos: string[];
+  status: ComplaintStatus;
+  resolutionNote?: string;
+  refundAmount?: number;
+  reprintOrderId?: string;
+  createdAt: number;
+  resolvedAt?: number;
+  // hanya di daftar admin
+  buyer?: string;
+  total?: number;
 };
 
 export type DesignSubmission = {
@@ -226,6 +262,7 @@ export type CreatorOrderItem = {
   designUri?: string;
   royalty: number;
   royaltyBooked: boolean;
+  royaltyReversed: number; // bagian royalti yang ditarik kembali karena refund (royalty = sisa bersihnya)
   buyer: string; // nama depan + inisial
   city: string;
 };
@@ -236,6 +273,7 @@ export type CreatorOrderSummary = {
   paidUnits: number;
   royaltyBooked: number;
   royaltyPending: number;
+  royaltyReversed: number;
 };
 
 // Penarikan saldo kreator (GET /api/designer/payouts, GET /api/payouts).
@@ -249,6 +287,7 @@ export type PayoutBalance = {
   inProcess: number; // pengajuan diminta/diproses
   withdrawn: number; // sudah ditransfer
   released: number; // total royalti dari pesanan selesai
+  reversed: number; // royalti yang ditarik kembali karena refund (tidak bisa ditarik)
 };
 
 export type Payout = {
@@ -277,6 +316,12 @@ export type FinanceFlow = {
   creators: number; // royalti kreator
   gatewayFees: number; // estimasi biaya Midtrans
   platformIncome: number;
+  // pembatalan, refund & cetak ulang (pesanan yang dibayar pada periode ini)
+  refunded: number; // dana dikembalikan ke pembeli (sudah dikurangkan dari platformIncome)
+  refunds: number; // jumlah refund
+  creatorsReversed: number; // royalti yang ditarik kembali (creators = sisa bersihnya)
+  reprints: number; // pesanan cetak ulang gratis
+  reprintCost: number; // tagihan produsen untuk cetak ulang (sudah ada di production + shippingCost)
 };
 
 export type FinanceOwed = {

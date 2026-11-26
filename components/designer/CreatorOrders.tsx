@@ -31,12 +31,13 @@ export default function CreatorOrders() {
       </p>
 
       {s && (
-        <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        <div className={`mt-4 grid gap-3 ${s.royaltyReversed > 0 ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
           {[
             ["Pesanan", String(s.orders)],
             ["Item terjual (lunas)", `${s.paidUnits} / ${s.units} pcs`],
             ["Royalti tercatat", rupiah(s.royaltyBooked)],
             ["Menunggu pembayaran", rupiah(s.royaltyPending)],
+            ...(s.royaltyReversed > 0 ? [["Royalti dibalik (refund)", `− ${rupiah(s.royaltyReversed)}`]] : []),
           ].map(([label, value]) => (
             <div key={label} className="card p-4">
               <p className="text-xs text-ink/50">{label}</p>
@@ -88,6 +89,9 @@ export default function CreatorOrders() {
                   <td className="p-3">
                     <span className={it.royaltyBooked ? "font-bold text-jade-800" : "text-ink/45"}>{rupiah(it.royalty)}</span>
                     <span className="block text-xs text-ink/45">{it.royaltyBooked ? "tercatat" : "estimasi"}</span>
+                    {it.royaltyReversed > 0 && (
+                      <span className="block text-xs font-semibold text-coral-600">− {rupiah(it.royaltyReversed)} dibalik (refund)</span>
+                    )}
                   </td>
                 </tr>
               ))}

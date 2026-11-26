@@ -4,9 +4,10 @@ import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Mockup from "@/components/Mockup";
 import { COLORS, type ProductType } from "@/lib/data";
-import { advanceOrder, getOrder, markDelivered, markPaid, ORDER_FLOW, ORDER_STATUS, SHIPPING_CARRIERS, shipOrder } from "@/lib/orders";
+import { advanceOrder, cancelOrder, getOrder, markDelivered, markPaid, ORDER_FLOW, ORDER_STATUS, SHIPPING_CARRIERS, shipOrder } from "@/lib/orders";
 import { fmtDate, fmtTime, rupiah } from "@/lib/format";
 import type { Order } from "@/lib/types";
+import OrderRefundPanel from "@/components/admin/OrderRefundPanel";
 
 // Detail pesanan untuk admin (operasional): data lengkap pembeli & akun, file
 // desain untuk produksi, pembayaran, dan langkah status berikutnya.
@@ -138,8 +139,10 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
           <p className="text-xs font-bold uppercase tracking-wide text-ink/45">Langkah berikutnya</p>
           {cancelled && (
             <p className="mt-2 text-sm text-ink/70">
-              Pesanan dibatalkan karena tidak dibayar sampai batas waktu. Bila dana ternyata masuk belakangan,
-              pesanan otomatis aktif kembali lewat notifikasi gateway.
+              {order.refunds.length > 0
+                ? <>Pesanan dibatalkan dan dana {rupiah(order.refunded)} dikembalikan ke pembeli (lihat rincian di bawah).</>
+                : <>Pesanan dibatalkan karena tidak dibayar (batas waktu habis atau dibatalkan pembeli). Bila dana ternyata masuk belakangan,
+                  pesanan otomatis aktif kembali lewat notifikasi gateway.</>}
             </p>
           )}
           {order.status === "menunggu-pembayaran" && (
@@ -151,6 +154,13 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
                 onClick={() => confirm(`Tandai ${order.id} LUNAS secara manual? Pastikan dana sudah diterima.`) && run(() => markPaid(order.id, "Manual (admin)"))}
               >
                 Tandai lunas manual
+              </button>
+              <button
+                className="btn-secondary btn-sm text-coral-600"
+                disabled={busy}
+                onClick={() => confirm(`Batalkan ${order.id}? Transaksi di gateway ikut dibatalkan.`) && run(() => cancelOrder(order.id))}
+              >
+                Batalkan pesanan
               </button>
             </div>
           )}
@@ -201,14 +211,22 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
           {order.status === "tiba" && (
             <p className="mt-2 text-sm text-ink/70">
               Paket tiba {order.shipment?.deliveredAt && <>pada <b>{fmtDate(order.shipment.deliveredAt)} · {fmtTime(order.shipment.deliveredAt)}</b></>}.
-              Menunggu pembeli menekan &quot;Pesanan diterima&quot;
-              {order.autoCompleteAt && <> — selesai otomatis <b>{fmtDate(order.autoCompleteAt)} · {fmtTime(order.autoCompleteAt)}</b></>}.
+              {order.complaint?.status === "terbuka" ? (
+                <> Pembeli mengajukan komplain — selesai otomatis ditahan sampai komplain diputuskan (lihat di bawah).</>
+              ) : (
+                <>
+                  {" "}Menunggu pembeli menekan &quot;Pesanan diterima&quot;
+                  {order.autoCompleteAt && <> — selesai otomatis <b>{fmtDate(order.autoCompleteAt)} · {fmtTime(order.autoCompleteAt)}</b></>}.
+                </>
+              )}
             </p>
           )}
           {order.status === "selesai" && <p className="mt-2 text-sm text-ink/70">Pesanan selesai — tidak ada langkah lagi.</p>}
           {error && <p className="mt-3 rounded-lg bg-coral-50 p-2 text-sm font-semibold text-coral-600">{error}</p>}
         </div>
       </section>
+
+      <OrderRefundPanel order={order} onChange={setOrder} />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.5fr_1fr]">
         {/* item + file produksi */}

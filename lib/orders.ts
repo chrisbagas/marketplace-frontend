@@ -1,7 +1,7 @@
 "use client";
 
 import type { CartItem } from "./cart";
-import type { CreatorOrderItem, CreatorOrderSummary, Order, Quote, Voucher } from "./types";
+import type { Complaint, ComplaintReason, ComplaintStatus, CreatorOrderItem, CreatorOrderSummary, Order, Quote, Voucher } from "./types";
 
 // Panggilan API pesanan & checkout. Harga selalu dari server (quote); keranjang
 // di browser hanya menyimpan pilihan produk, warna, ukuran, dan jumlah.
@@ -114,3 +114,60 @@ export const ORDER_STATUS: Record<Order["status"], { label: string; chip: string
 export const ORDER_STATUSES = Object.keys(ORDER_STATUS) as Order["status"][];
 // urutan alur normal (tanpa "dibatalkan") untuk stepper
 export const ORDER_FLOW: Order["status"][] = ORDER_STATUSES.filter((s) => s !== "dibatalkan");
+
+// ---- pembatalan, refund, komplain ------------------------------------------------
+
+// pembeli (atau admin): batalkan pesanan yang belum dibayar
+export async function cancelOrder(id: string): Promise<Order> {
+  return (await json<{ order: Order }>(await send(`/api/orders/${id}/cancel`, {}))).order;
+}
+
+// admin: batalkan pesanan "dibayar" dan kembalikan dana penuh. method kosong = otomatis (Midtrans bila didukung, selain itu manual)
+export async function refundOrder(
+  id: string,
+  input: { reason: string; method?: "gateway" | "manual"; reference?: string },
+): Promise<Order> {
+  return (await json<{ order: Order }>(await send(`/api/orders/${id}/refund`, input))).order;
+}
+
+export const COMPLAINT_REASONS: Record<ComplaintReason, string> = {
+  "cacat-cetak": "Cacat cetak",
+  "salah-produk": "Produk / ukuran / warna salah",
+  rusak: "Rusak saat pengiriman",
+  "tidak-sesuai": "Tidak sesuai pesanan atau gambar",
+  lainnya: "Lainnya",
+};
+
+export const COMPLAINT_STATUS: Record<ComplaintStatus, { label: string; chip: string }> = {
+  terbuka: { label: "Komplain diproses", chip: "bg-sun-100 text-sun-600" },
+  "dicetak-ulang": { label: "Dicetak ulang", chip: "bg-jade-100 text-jade-800" },
+  direfund: { label: "Dana dikembalikan", chip: "bg-jade-100 text-jade-800" },
+  ditolak: { label: "Komplain ditolak", chip: "bg-coral-100 text-coral-600" },
+};
+
+export const MAX_COMPLAINT_PHOTOS = 3;
+
+// pembeli: ajukan komplain saat pesanan "tiba"
+export async function fileComplaint(
+  id: string,
+  input: { reason: ComplaintReason; description: string; photos: string[] },
+): Promise<Order> {
+  return (await json<{ order: Order }>(await send(`/api/orders/${id}/complaint`, input))).order;
+}
+
+// admin: daftar komplain (terbuka dulu)
+export async function getComplaints(status = ""): Promise<Complaint[]> {
+  const q = status ? `?status=${encodeURIComponent(status)}` : "";
+  return (await json<{ complaints: Complaint[] }>(await fetch(`/api/complaints${q}`, { cache: "no-store" }))).complaints;
+}
+
+// admin: putuskan komplain — cetak ulang, refund (penuh/sebagian), atau tolak
+export async function resolveComplaint(
+  id: number,
+  input:
+    | { action: "reprint"; note?: string }
+    | { action: "refund"; amount: number; method?: "gateway" | "manual"; reference?: string; note?: string }
+    | { action: "reject"; note: string },
+): Promise<Complaint> {
+  return (await json<{ complaint: Complaint }>(await send(`/api/complaints/${id}`, input, "PATCH"))).complaint;
+}

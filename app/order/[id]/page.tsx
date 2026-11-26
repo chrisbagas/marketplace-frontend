@@ -8,7 +8,8 @@ import PaymentLauncher from "@/components/PaymentLauncher";
 import { addManyToCart } from "@/lib/cart";
 import { getPaymentConfig, syncPayment } from "@/lib/payments";
 import { useSession } from "@/lib/auth";
-import { confirmReceived } from "@/lib/orders";
+import ComplaintForm from "@/components/ComplaintForm";
+import { cancelOrder, COMPLAINT_REASONS, COMPLAINT_STATUS, confirmReceived } from "@/lib/orders";
 import { COLORS, type ProductType } from "@/lib/data";
 import { rupiah, fmtDate, fmtTime } from "@/lib/format";
 import type { Order } from "@/lib/types";
@@ -95,6 +96,9 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   const [paying, setPaying] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+  const [complaining, setComplaining] = useState(false);
   const { user } = useSession();
   const isAdmin = user?.role === "admin";
 
@@ -164,10 +168,22 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
       {cancelled && (
         <div className="card mt-6 border-coral-200 bg-coral-50 p-5">
           <p className="font-bold text-coral-600">Pesanan dibatalkan</p>
-          <p className="mt-1 text-sm text-ink/70">
-            Pembayaran tidak diterima sebelum batas waktu, jadi pesanan ini dibatalkan otomatis dan voucher yang dipakai
-            dikembalikan. Kalau kamu sudah terlanjur membayar, status akan diperbarui otomatis dalam beberapa menit.
-          </p>
+          {order.refunds.length > 0 ? (
+            <p className="mt-1 text-sm text-ink/70">
+              Pesanan ini dibatalkan oleh admin dan dana <b>{rupiah(order.refunded)}</b> dikembalikan
+              {order.refunds[0].method === "gateway"
+                ? " lewat metode pembayaran asal (bisa butuh beberapa hari kerja sampai masuk)."
+                : <> lewat transfer manual (ref <span className="font-mono">{order.refunds[0].reference}</span>).</>}
+              {order.refunds[0].reason && <> Alasan: {order.refunds[0].reason}.</>}
+            </p>
+          ) : order.timeline.some((t) => /dibatalkan oleh pembeli/.test(t.status)) ? (
+            <p className="mt-1 text-sm text-ink/70">Kamu membatalkan pesanan ini. Voucher yang dipakai sudah dikembalikan.</p>
+          ) : (
+            <p className="mt-1 text-sm text-ink/70">
+              Pembayaran tidak diterima sebelum batas waktu, jadi pesanan ini dibatalkan otomatis dan voucher yang dipakai
+              dikembalikan. Kalau kamu sudah terlanjur membayar, status akan diperbarui otomatis dalam beberapa menit.
+            </p>
+          )}
           <button
             className="btn-primary btn-sm mt-3"
             data-track="pesan-lagi"
@@ -212,6 +228,28 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             <button onClick={() => setPaying(true)} className="btn-primary btn-sm" data-track="bayar-dari-pesanan">
               {order.payment.method !== "belum dipilih" ? "Lihat cara bayar" : "Bayar sekarang"}
             </button>
+            {order.userId === user?.id && (
+              <button
+                className="btn-secondary btn-sm"
+                disabled={cancelling}
+                data-track="batalkan-pesanan"
+                onClick={async () => {
+                  if (!confirm("Batalkan pesanan ini? Pesanan yang dibatalkan tidak bisa dibayar lagi.")) return;
+                  setCancelling(true);
+                  setCancelError("");
+                  try {
+                    setOrder(await cancelOrder(order.id));
+                  } catch (e) {
+                    setCancelError((e as Error).message);
+                  } finally {
+                    setCancelling(false);
+                  }
+                }}
+              >
+                {cancelling ? "Membatalkan…" : "Batalkan pesanan"}
+              </button>
+            )}
+            {cancelError && <p className="w-full text-sm font-semibold text-coral-600">{cancelError}</p>}
           </div>
         )}
         {order.shipment && (
@@ -234,7 +272,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             </button>
           </div>
         )}
-        {order.status === "tiba" && order.userId === user?.id && (
+        {order.status === "tiba" && order.userId === user?.id && !order.complaint && (
           <div className="mt-4 rounded-xl border border-jade-700 bg-white p-4">
             <p className="font-bold">Paket sudah sampai?</p>
             <p className="mt-1 text-sm text-ink/65">
@@ -261,6 +299,17 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             >
               {confirming ? "Menyimpan…" : "Pesanan diterima ✓"}
             </button>
+            <button
+              type="button"
+              className="btn-secondary btn-sm ml-2 mt-3"
+              data-track="ajukan-komplain"
+              onClick={() => setComplaining((v) => !v)}
+            >
+              Ajukan komplain
+            </button>
+            {complaining && (
+              <ComplaintForm orderId={order.id} onDone={(o) => { setOrder(o); setComplaining(false); }} />
+            )}
           </div>
         )}
         {isAdmin && (
@@ -269,6 +318,72 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
           </Link>
         )}
       </div>
+
+      {order.reprintOf && (
+        <div className="card mt-6 border-jade-200 bg-jade-50 p-4 text-sm">
+          <p className="font-bold text-jade-800">Pesanan cetak ulang gratis</p>
+          <p className="mt-0.5 text-ink/70">
+            Pengganti untuk pesanan <Link href={`/order/${order.reprintOf}`} className="font-semibold text-jade-700 hover:underline">{order.reprintOf}</Link> setelah komplainmu disetujui.
+          </p>
+        </div>
+      )}
+
+      {order.complaint && (
+        <div className="card mt-6 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-bold">Komplain pesanan</p>
+            <span className={`chip ${COMPLAINT_STATUS[order.complaint.status].chip}`}>{COMPLAINT_STATUS[order.complaint.status].label}</span>
+          </div>
+          <p className="mt-2 text-sm"><b>{COMPLAINT_REASONS[order.complaint.reason]}</b> · diajukan {fmtDate(order.complaint.createdAt)}</p>
+          <p className="mt-1 whitespace-pre-line text-sm text-ink/70">{order.complaint.description}</p>
+          {order.complaint.photos.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {order.complaint.photos.map((url) => (
+                <a key={url} href={url} target="_blank" rel="noreferrer" className="block h-20 w-20 overflow-hidden rounded-lg border border-ink/10">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="Foto komplain" className="h-full w-full object-cover" />
+                </a>
+              ))}
+            </div>
+          )}
+          {order.complaint.status === "terbuka" && (
+            <p className="mt-3 rounded-lg bg-sun-50 p-3 text-sm text-sun-600">
+              Tim kami sedang memeriksa komplainmu. Selama itu pesanan tidak diselesaikan otomatis.
+            </p>
+          )}
+          {order.complaint.status === "dicetak-ulang" && order.complaint.reprintOrderId && (
+            <p className="mt-3 rounded-lg bg-jade-50 p-3 text-sm text-jade-800">
+              Kami mencetak ulang pesananmu tanpa biaya:{" "}
+              <Link href={`/order/${order.complaint.reprintOrderId}`} className="font-bold underline">{order.complaint.reprintOrderId}</Link>.
+            </p>
+          )}
+          {order.complaint.status === "direfund" && (
+            <p className="mt-3 rounded-lg bg-jade-50 p-3 text-sm text-jade-800">
+              Dana <b>{rupiah(order.complaint.refundAmount ?? 0)}</b> dikembalikan kepadamu.
+            </p>
+          )}
+          {order.complaint.status === "ditolak" && (
+            <p className="mt-3 rounded-lg bg-coral-50 p-3 text-sm text-coral-600">Komplain ditolak.</p>
+          )}
+          {order.complaint.resolutionNote && (
+            <p className="mt-2 text-sm text-ink/70">Catatan admin: {order.complaint.resolutionNote}</p>
+          )}
+        </div>
+      )}
+
+      {order.refunds.length > 0 && !cancelled && (
+        <div className="card mt-6 p-5 text-sm">
+          <p className="font-bold">Pengembalian dana</p>
+          <ul className="mt-2 space-y-1">
+            {order.refunds.map((r) => (
+              <li key={r.id} className="flex justify-between gap-3">
+                <span className="text-ink/65">{fmtDate(r.createdAt)} · {r.method === "gateway" ? "lewat metode pembayaran asal" : `transfer manual (ref ${r.reference})`}</span>
+                <b className="text-jade-800">{rupiah(r.amount)}</b>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {order.status === "selesai" && (
         <div className="card mt-6 p-5">

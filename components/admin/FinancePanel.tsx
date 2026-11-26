@@ -68,6 +68,7 @@ export default function FinancePanel() {
           {f && (
             <dl className="mt-4 space-y-2 text-sm" style={num}>
               <Line label={`Uang masuk dari pembeli (${f.orders} pesanan)`} value={f.received} strong />
+              {f.refunded > 0 && <Line label={`Refund ke pembeli (${f.refunds}×)`} value={-f.refunded} />}
               <Line label="Produsen · biaya produksi" value={-f.production} />
               <Line label="Produsen · ongkir (produsen yang mengirim)" value={-f.shippingCost} />
               <Line label="Kreator · royalti" value={-f.creators} />
@@ -75,6 +76,17 @@ export default function FinancePanel() {
               <div className="border-t border-ink/10 pt-2">
                 <Line label="Pendapatan bersih KaryaKita" value={f.platformIncome} strong accent />
               </div>
+              {f.refunds > 0 && (
+                <p className="text-xs text-ink/50">
+                  {f.refunds} refund · {rupiah(f.refunded)} dikembalikan ke pembeli
+                  {f.creatorsReversed > 0 && <>, royalti kreator {rupiah(f.creatorsReversed)} dibalik</>}. Biaya Midtrans tidak dikembalikan.
+                </p>
+              )}
+              {f.reprints > 0 && (
+                <p className="text-xs text-ink/50">
+                  {f.reprints} pesanan cetak ulang gratis · tagihan produsen {rupiah(f.reprintCost)} ditanggung platform (sudah ada di baris produsen).
+                </p>
+              )}
               {f.discount > 0 && <p className="text-xs text-ink/50">Sudah dikurangi diskon voucher {rupiah(f.discount)} yang ditanggung platform.</p>}
               {f.received > 0 && (
                 <p className="text-xs text-ink/50">Margin bersih {((f.platformIncome / f.received) * 100).toFixed(1)}% dari uang masuk.</p>

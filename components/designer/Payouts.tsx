@@ -45,6 +45,7 @@ export default function Payouts({ data, reload }: { data: DesignerPayouts | null
         <Row label="Tertahan (pesanan belum selesai)" value={rupiah(b.pending)} hint="Cair setelah pembeli menerima paket" />
         {b.inProcess > 0 && <Row label="Sedang diproses" value={rupiah(b.inProcess)} />}
         <Row label="Sudah ditransfer" value={rupiah(b.withdrawn)} />
+        {b.reversed > 0 && <Row label="Dibalik (refund / pembatalan pesanan)" value={`− ${rupiah(b.reversed)}`} hint="Royalti dari pesanan yang dikembalikan dananya" />}
       </dl>
 
       <div className="mt-4 border-t border-ink/8 pt-3">

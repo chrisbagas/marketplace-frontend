@@ -142,7 +142,11 @@ export default function OrdersPanel() {
                       <span className="text-ink/40">{o.shipping.courier} · belum ada resi</span>
                     )}
                   </td>
-                  <td className="p-3"><span className={`chip text-xs ${ORDER_STATUS[o.status].chip}`}>{ORDER_STATUS[o.status].label}</span></td>
+                  <td className="p-3">
+                    <span className={`chip text-xs ${ORDER_STATUS[o.status].chip}`}>{ORDER_STATUS[o.status].label}</span>
+                    {o.complaint?.status === "terbuka" && <span className="chip ml-1 bg-coral-100 text-xs text-coral-600">Komplain</span>}
+                    {o.reprintOf && <span className="chip ml-1 bg-ink/8 text-xs text-ink/60">Cetak ulang</span>}
+                  </td>
                   <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>{action(o)}</td>
                 </tr>
               );
