@@ -72,6 +72,8 @@ export type SignupInput = {
   name: string;
   asCreator: boolean;
   city: string;
+  acceptTerms: boolean;
+  acceptCreatorTerms: boolean;
 };
 
 export async function signup(input: SignupInput): Promise<SessionUser> {
@@ -129,6 +131,8 @@ export async function getProviders(): Promise<{ password: boolean; google: boole
 }
 
 // Login Google berjalan lewat redirect penuh (bukan fetch): backend → Google → backend → `next`.
-export const googleLoginUrl = (next: string) => `/api/auth/google/start?next=${encodeURIComponent(next)}`;
+// `consent` = the visitor accepted the terms (signup page); required by the backend to create a new Google account.
+export const googleLoginUrl = (next: string, consent = false) =>
+  `/api/auth/google/start?next=${encodeURIComponent(next)}${consent ? "&consent=1" : ""}`;
 
 export { PROTECTED, canAccess, safeNext, ROLE_LABEL } from "./access";

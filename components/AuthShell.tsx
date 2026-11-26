@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getProviders, googleLoginUrl } from "@/lib/auth";
 
 // Kerangka halaman Masuk / Daftar: kartu di tengah + tombol Google.
@@ -30,7 +31,10 @@ export default function AuthShell({
 
 // Tombol Google: aktif hanya bila backend punya kredensial OAuth
 // (GOOGLE_CLIENT_ID / SECRET / REDIRECT_URL). Login lewat redirect penuh.
-export function GoogleButton({ next, label }: { next: string; label: string }) {
+// `consent` (signup page only): clicking the button counts as accepting the
+// Terms + Privacy Policy, stated in the notice under the button; the backend
+// creates a new Google account only when it receives this flag.
+export function GoogleButton({ next, label, consent = false }: { next: string; label: string; consent?: boolean }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   useEffect(() => {
     getProviders().then((p) => setEnabled(p.google));
@@ -47,10 +51,20 @@ export function GoogleButton({ next, label }: { next: string; label: string }) {
 
   if (enabled) {
     return (
-      <a href={googleLoginUrl(next)} className="btn-secondary flex w-full items-center justify-center gap-2.5" data-track="login-google">
-        {icon}
-        {label}
-      </a>
+      <>
+        <a href={googleLoginUrl(next, consent)} className="btn-secondary flex w-full items-center justify-center gap-2.5" data-track="login-google">
+          {icon}
+          {label}
+        </a>
+        {consent && (
+          <p className="mt-2 text-center text-xs text-ink/55">
+            Dengan mendaftar lewat Google, kamu menyetujui{" "}
+            <Link href="/syarat-ketentuan" className="font-semibold text-jade-700 hover:underline">Syarat &amp; Ketentuan</Link>{" "}
+            dan{" "}
+            <Link href="/kebijakan-privasi" className="font-semibold text-jade-700 hover:underline">Kebijakan Privasi</Link>.
+          </p>
+        )}
+      </>
     );
   }
   return (

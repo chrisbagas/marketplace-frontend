@@ -21,6 +21,8 @@ function SignupForm() {
 
   const [form, setForm] = useState({ name: "", username: "", email: "", password: "", city: "" });
   const [asCreator, setAsCreator] = useState(params.get("peran") === "kreator");
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptCreatorTerms, setAcceptCreatorTerms] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -37,9 +39,11 @@ function SignupForm() {
     e.preventDefault();
     setError("");
     if (usernameHint || passwordHint) return setError(usernameHint ? `Username: ${usernameHint}` : `Password: ${passwordHint}`);
+    if (!acceptTerms) return setError("Setujui Syarat & Ketentuan dan Kebijakan Privasi untuk melanjutkan.");
+    if (asCreator && !acceptCreatorTerms) return setError("Kreator harus menyetujui perjanjian kreator untuk melanjutkan.");
     setBusy(true);
     try {
-      const u = await signup({ ...form, asCreator });
+      const u = await signup({ ...form, asCreator, acceptTerms, acceptCreatorTerms: asCreator && acceptCreatorTerms });
       track("click", { label: asCreator ? "daftar-kreator" : "daftar-pelanggan" });
       router.replace(rawNext && canAccess(u, next) ? next : u.role === "designer" ? "/designer" : "/");
       router.refresh();
@@ -67,7 +71,7 @@ function SignupForm() {
         </>
       }
     >
-      <GoogleButton next={next} label="Daftar dengan Google" />
+      <GoogleButton next={next} label="Daftar dengan Google" consent />
       <Divider />
 
       <form onSubmit={submit} className="space-y-4">
@@ -129,6 +133,39 @@ function SignupForm() {
             placeholder={`Minimal ${MIN_PASSWORD} karakter`}
           />
           {passwordHint && <p className="mt-1 text-xs text-coral-600">{passwordHint}</p>}
+        </div>
+        <div className="space-y-2.5">
+          <label className="flex cursor-pointer items-start gap-2.5 text-sm text-ink/75">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-jade-700"
+              checked={acceptTerms}
+              onChange={(e) => setAcceptTerms(e.target.checked)}
+              required
+            />
+            <span>
+              Saya setuju dengan{" "}
+              <Link href="/syarat-ketentuan" target="_blank" className="font-semibold text-jade-700 hover:underline">Syarat &amp; Ketentuan</Link>{" "}
+              dan{" "}
+              <Link href="/kebijakan-privasi" target="_blank" className="font-semibold text-jade-700 hover:underline">Kebijakan Privasi</Link>
+            </span>
+          </label>
+          {asCreator && (
+            <label className="flex cursor-pointer items-start gap-2.5 text-sm text-ink/75">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 shrink-0 accent-jade-700"
+                checked={acceptCreatorTerms}
+                onChange={(e) => setAcceptCreatorTerms(e.target.checked)}
+                required
+              />
+              <span>
+                Saya setuju dengan{" "}
+                <Link href="/syarat-ketentuan#perjanjian-kreator" target="_blank" className="font-semibold text-jade-700 hover:underline">Perjanjian Kreator</Link>
+                : karya yang saya unggah adalah milik saya / saya berhak menjualnya
+              </span>
+            </label>
+          )}
         </div>
         <FormError message={error} />
         <button type="submit" className="btn-primary w-full" disabled={busy}>

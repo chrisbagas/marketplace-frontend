@@ -13,6 +13,7 @@ const GOOGLE_ERRORS: Record<string, string> = {
   "google-sesi-habis": "Sesi login Google kedaluwarsa. Coba lagi.",
   "google-state": "Permintaan login Google tidak valid. Coba lagi.",
   "google-email-belum-terverifikasi": "Email Google kamu belum terverifikasi.",
+  "google-belum-setuju": "Akun Google ini belum terdaftar. Daftar dulu lewat halaman Daftar agar kamu bisa menyetujui Syarat & Ketentuan dan Kebijakan Privasi.",
   "google-nonaktif": "Login Google belum diaktifkan.",
   "google-gagal": "Login Google gagal. Coba lagi atau pakai password.",
 };

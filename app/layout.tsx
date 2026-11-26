@@ -1,5 +1,7 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { LEGAL_PAGES } from "@/lib/legal";
 import "./globals.css";
 import Header from "@/components/Header";
 import Monitor from "@/components/Monitor";
@@ -26,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <VerifyBanner />
         <main className="min-h-[70vh]">{children}</main>
         <footer className="mt-20 border-t border-ink/8 bg-white">
-          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:grid-cols-3">
+          <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <p className="text-lg font-extrabold">
                 Karya<span className="text-jade-700">Kita</span>
@@ -43,6 +45,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <li><a href="/designer" className="hover:text-ink">Jadi kreator</a></li>
                 <li><a href="/designer/studio" className="hover:text-ink">Studio Mockup</a></li>
                 <li><a href="/admin" className="hover:text-ink">Dashboard admin (demo)</a></li>
+              </ul>
+            </div>
+            <div className="text-sm">
+              <p className="mb-2 font-bold">Informasi</p>
+              <ul className="space-y-1.5 text-ink/60">
+                {LEGAL_PAGES.map((p) => (
+                  <li key={p.href}><Link href={p.href} className="hover:text-ink">{p.label}</Link></li>
+                ))}
               </ul>
             </div>
             <div className="text-sm">
