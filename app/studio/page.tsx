@@ -7,6 +7,7 @@ import { COLORS, PRODUCT_TYPES, type ProductType } from "@/lib/data";
 import { addToCart } from "@/lib/cart";
 import { rupiah } from "@/lib/format";
 import { track } from "@/lib/track";
+import { UPLOAD_HINT, uploadImage } from "@/lib/upload";
 import type { UserDesign } from "@/lib/types";
 
 // Studio Custom untuk PEMBELI: desain sendiri, beli untuk dipakai sendiri.
@@ -51,28 +52,29 @@ export default function CustomStudioPage() {
     if (!viewsFor(t).some((v) => v.id === view)) setView("flat");
   }
 
-  function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  const [uploading, setUploading] = useState<number | null>(null); // null = tidak sedang mengunggah, else persen
+
+  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = ""; // boleh memilih file yang sama lagi
     if (!file) return;
-    if (file.size > 4_000_000) return setError("File terlalu besar — maksimal 4 MB.");
     setError("");
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = String(reader.result);
-      setDesignUri(dataUrl);
-      setTitle(file.name.replace(/\.[^.]+$/, ""));
-      track("click", { label: "custom-upload" });
-      try {
-        const res = await fetch("/api/uploads", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: file.name, uri: dataUrl }),
-        });
-        const data = await res.json();
-        if (res.ok && data.url) setDesignUri(data.url);
-      } catch { /* pratinjau lokal tetap jalan */ }
-    };
-    reader.readAsDataURL(file);
+    const previous = designUri;
+    const preview = URL.createObjectURL(file); // pratinjau instan selagi diunggah
+    setDesignUri(preview);
+    setTitle(file.name.replace(/\.[^.]+$/, ""));
+    track("click", { label: "custom-upload" });
+    setUploading(0);
+    try {
+      const up = await uploadImage(file, "custom", { onProgress: setUploading });
+      setDesignUri(up.url);
+    } catch (err) {
+      setDesignUri(previous);
+      setError(err instanceof Error ? err.message : "Gagal mengunggah.");
+    } finally {
+      setUploading(null);
+      URL.revokeObjectURL(preview);
+    }
   }
 
   async function saveToProfile() {
@@ -129,10 +131,10 @@ export default function CustomStudioPage() {
         <div className="space-y-5">
           <section className="card p-5">
             <p className="font-bold">1 · Desainmu</p>
-            <button onClick={() => fileRef.current?.click()} className="btn-primary btn-sm mt-3 w-full">
-              ⬆ Unggah gambar (PNG/JPG/WebP/SVG, maks 4 MB)
+            <button onClick={() => fileRef.current?.click()} disabled={uploading !== null} className="btn-primary btn-sm mt-3 w-full disabled:opacity-60">
+              {uploading !== null ? `Mengunggah… ${uploading}%` : `⬆ Unggah gambar (${UPLOAD_HINT})`}
             </button>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onUpload} />
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onUpload} />
             {saved.length > 0 && (
               <>
                 <p className="label mt-4">Atau pakai desain tersimpan</p>
@@ -214,8 +216,8 @@ export default function CustomStudioPage() {
             {error && <p className="mt-3 rounded-lg bg-coral-50 p-2 text-xs font-semibold text-coral-600">{error}</p>}
             {notice && <p className="mt-3 rounded-lg bg-jade-50 p-2 text-xs font-semibold text-jade-800">{notice}</p>}
             <div className="mt-3 flex gap-2">
-              <button onClick={saveToProfile} className="btn-secondary flex-1" data-track="custom-save">💾 Simpan ke profil</button>
-              <button onClick={buy} className="btn-primary flex-1" data-track="custom-buy">🛒 Beli · {rupiah(price)}</button>
+              <button onClick={saveToProfile} disabled={uploading !== null} className="btn-secondary flex-1 disabled:opacity-50" data-track="custom-save">💾 Simpan ke profil</button>
+              <button onClick={buy} disabled={uploading !== null} className="btn-primary flex-1 disabled:opacity-50" data-track="custom-buy">🛒 Beli · {rupiah(price)}</button>
             </div>
             <p className="mt-2 text-center text-[11px] text-ink/45">Khusus pemakaian pribadi — tidak tayang di katalog, tanpa royalti.</p>
           </section>

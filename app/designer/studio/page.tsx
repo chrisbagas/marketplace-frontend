@@ -7,6 +7,7 @@ import { getTaxonomy, type FacetAttribute } from "@/lib/search";
 import { COLORS, DESIGNS, PRODUCT_TYPES, type ProductType } from "@/lib/data";
 import { rupiah } from "@/lib/format";
 import { track } from "@/lib/track";
+import { UPLOAD_HINT, uploadImage } from "@/lib/upload";
 
 // Studio Mockup: designers preview artwork on product flats, on real photos
 // (blank tee / worn by a real model), tweak the print in real centimeters,
@@ -60,39 +61,33 @@ export default function StudioPage() {
     if (!viewsFor(t).some((v) => v.id === view)) setView("flat");
   }
 
-  function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  const [uploading, setUploading] = useState<number | null>(null); // null = tidak sedang mengunggah, else persen
+
+  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = ""; // boleh memilih file yang sama lagi
     if (!file) return;
-    if (file.size > 4_000_000) {
-      setError("File terlalu besar — maksimal 4 MB.");
-      return;
-    }
     setError("");
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const dataUrl = String(reader.result);
-      setDesignUri(dataUrl); // pratinjau instan selagi diunggah
-      setTitle(file.name.replace(/\.[^.]+$/, ""));
-      track("click", { label: "studio-upload" });
-      // simpan ke server (folder uploads/ backend) supaya database hanya
-      // menyimpan URL, bukan data gambar raksasa
-      try {
-        const res = await fetch("/api/uploads", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: file.name, uri: dataUrl }),
-        });
-        const data = await res.json();
-        if (res.ok && data.url) setDesignUri(data.url);
-        else setError(data.error ?? "Gagal mengunggah — pratinjau tetap jalan, tapi tidak tersimpan di server.");
-      } catch {
-        setError("Server upload tidak terjangkau — pratinjau tetap jalan dari file lokal.");
-      }
-    };
-    reader.readAsDataURL(file);
+    const previous = designUri;
+    const preview = URL.createObjectURL(file); // pratinjau instan selagi diunggah
+    setDesignUri(preview);
+    setTitle(file.name.replace(/\.[^.]+$/, ""));
+    track("click", { label: "studio-upload" });
+    setUploading(0);
+    try {
+      const up = await uploadImage(file, "designs", { onProgress: setUploading });
+      setDesignUri(up.url);
+    } catch (err) {
+      setDesignUri(previous);
+      setError(err instanceof Error ? err.message : "Gagal mengunggah.");
+    } finally {
+      setUploading(null);
+      URL.revokeObjectURL(preview);
+    }
   }
 
   async function submit() {
+    if (uploading !== null) return setError("Tunggu sampai unggahan selesai.");
     setError("");
     const res = await fetch("/api/designs", {
       method: "POST",
@@ -142,10 +137,10 @@ export default function StudioPage() {
                 </button>
               ))}
             </div>
-            <button onClick={() => fileRef.current?.click()} className="btn-secondary btn-sm mt-3 w-full">
-              ⬆ Unggah karyamu (PNG/JPG/WebP/SVG, maks 4 MB)
+            <button onClick={() => fileRef.current?.click()} disabled={uploading !== null} className="btn-secondary btn-sm mt-3 w-full disabled:opacity-60">
+              {uploading !== null ? `Mengunggah… ${uploading}%` : `⬆ Unggah karyamu (${UPLOAD_HINT})`}
             </button>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onUpload} />
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onUpload} />
           </section>
 
           <section className="card p-5">
@@ -244,7 +239,7 @@ export default function StudioPage() {
                 <p className="mt-1 text-ink/60">Tim admin akan meninjau desainmu. Pantau statusnya di <Link href="/designer" className="font-semibold text-jade-700 hover:underline">dashboard kreator</Link>.</p>
               </div>
             ) : (
-              <button onClick={submit} className="btn-primary mt-4 w-full" data-track="studio-submit">
+              <button onClick={submit} disabled={uploading !== null} className="btn-primary mt-4 w-full disabled:opacity-50" data-track="studio-submit">
                 Ajukan desain untuk dijual →
               </button>
             )}
