@@ -1,4 +1,4 @@
-import type { Product } from "./types";
+import type { Product, PublicDesigner } from "./types";
 
 // Di browser cukup path relatif (diproxy next.config.ts ke backend Go).
 // Di server component harus URL absolut ke backend langsung.
@@ -23,4 +23,11 @@ export async function getProduct(id: string): Promise<Product | null> {
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`GET /api/products/${id} ${res.status}`);
   return (await res.json()).product;
+}
+
+export async function getDesigner(id: string): Promise<PublicDesigner | null> {
+  const res = await fetch(`${API_BASE}/api/designers/${encodeURIComponent(id)}`, { cache: "no-store" });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`GET /api/designers/${id} ${res.status}`);
+  return (await res.json()).designer;
 }

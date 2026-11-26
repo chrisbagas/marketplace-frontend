@@ -314,3 +314,16 @@ export type Producer = {
   charges: ProducerCharge[];
   payouts: ProducerPayout[];
 };
+
+// Public creator profile from GET /api/designers/{id}: public fields only.
+export type PublicDesigner = {
+  id: string;
+  name: string;
+  city: string;
+  bio: string;
+  hue: number;
+  avatar: string;
+  products: number; // active listings
+  sold: number; // units sold across all listings
+  since: number; // epoch ms
+};

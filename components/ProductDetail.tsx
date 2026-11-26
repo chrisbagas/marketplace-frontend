@@ -114,8 +114,11 @@ export default function ProductDetail({ listing, related }: { listing: Product; 
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight">{listing.title}</h1>
           <p className="mt-2 flex flex-wrap items-center gap-x-1.5 text-sm text-ink/60">
             ★ {listing.rating} · {compact(listing.sold)} terjual · oleh
-            <Avatar uri={listing.designerAvatar} name={listing.designerName} hue={designer?.hue ?? 152} size={22} />
-            <span className="font-semibold text-jade-700">{listing.designerName}</span>{designer && <> ({designer.city})</>}
+            <Link href={`/kreator/${listing.designerId}`} className="inline-flex items-center gap-1.5 hover:underline">
+              <Avatar uri={listing.designerAvatar} name={listing.designerName} hue={designer?.hue ?? 152} size={22} />
+              <span className="font-semibold text-jade-700">{listing.designerName}</span>
+            </Link>
+            {designer && <> ({designer.city})</>}
           </p>
           <p className="mt-4 text-3xl font-extrabold text-jade-800">{rupiah(listing.price)}</p>
 
