@@ -2,8 +2,11 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Mockup from "@/components/Mockup";
-import PaymentModal from "@/components/PaymentModal";
+import PaymentLauncher from "@/components/PaymentLauncher";
+import { addManyToCart } from "@/lib/cart";
+import { getPaymentConfig, syncPayment } from "@/lib/payments";
 import { useSession } from "@/lib/auth";
 import { confirmReceived } from "@/lib/orders";
 import { COLORS, type ProductType } from "@/lib/data";
@@ -86,6 +89,7 @@ function ReviewForm({ orderId, listingId, title }: { orderId: string; listingId:
 
 export default function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [missing, setMissing] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -101,6 +105,31 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Pembayaran lewat gateway: status dicek ke server (yang menanyakan Midtrans) saat
+  // halaman dibuka dan tiap 15 dtk selama menunggu — jadi lunasnya langsung terlihat
+  // walau popup sudah ditutup atau pembayaran dilakukan belakangan (VA / QRIS).
+  const pending = order?.payment.status === "pending" && order.status === "menunggu-pembayaran";
+  useEffect(() => {
+    if (!pending) return;
+    let stop = false;
+    const tick = async () => {
+      try {
+        const cfg = await getPaymentConfig();
+        if (cfg.provider !== "midtrans" || stop) return;
+        const fresh = await syncPayment(id);
+        if (!stop) setOrder(fresh);
+      } catch {
+        /* abaikan — percobaan berikutnya */
+      }
+    };
+    tick();
+    const t = setInterval(tick, 15_000);
+    return () => {
+      stop = true;
+      clearInterval(t);
+    };
+  }, [pending, id]);
 
   if (missing) {
     return (
@@ -118,6 +147,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   if (!order) return <div className="mx-auto max-w-3xl px-4 py-16" />;
 
   const activeIdx = STEPS.findIndex((s) => s.key === order.status);
+  const cancelled = order.status === "dibatalkan";
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
@@ -126,13 +156,33 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
           <h1 className="text-2xl font-extrabold tracking-tight">Pesanan {order.id}</h1>
           <p className="text-sm text-ink/55">Dibuat {fmtDate(order.createdAt)} · {fmtTime(order.createdAt)}</p>
         </div>
-        <span className={`chip ${order.status === "selesai" ? "bg-jade-100 text-jade-800" : "bg-sun-100 text-sun-600"}`}>
-          {STEPS[activeIdx]?.icon} {STEPS[activeIdx]?.label}
+        <span className={`chip ${cancelled ? "bg-coral-100 text-coral-600" : order.status === "selesai" ? "bg-jade-100 text-jade-800" : "bg-sun-100 text-sun-600"}`}>
+          {cancelled ? "✖ Dibatalkan" : <>{STEPS[activeIdx]?.icon} {STEPS[activeIdx]?.label}</>}
         </span>
       </div>
 
+      {cancelled && (
+        <div className="card mt-6 border-coral-200 bg-coral-50 p-5">
+          <p className="font-bold text-coral-600">Pesanan dibatalkan</p>
+          <p className="mt-1 text-sm text-ink/70">
+            Pembayaran tidak diterima sebelum batas waktu, jadi pesanan ini dibatalkan otomatis dan voucher yang dipakai
+            dikembalikan. Kalau kamu sudah terlanjur membayar, status akan diperbarui otomatis dalam beberapa menit.
+          </p>
+          <button
+            className="btn-primary btn-sm mt-3"
+            data-track="pesan-lagi"
+            onClick={() => {
+              addManyToCart(order.items.map((it) => ({ productId: it.productId, title: it.title, type: it.type, color: it.color, size: it.size, qty: it.qty, price: it.price, designUri: it.designUri })));
+              router.push("/cart");
+            }}
+          >
+            Pesan lagi — isi ulang keranjang
+          </button>
+        </div>
+      )}
+
       {/* progress */}
-      <div className="card mt-6 p-5">
+      <div className={`card mt-6 p-5 ${cancelled ? "hidden" : ""}`}>
         <div className="flex items-center">
           {STEPS.map((s, i) => (
             <div key={s.key} className="flex flex-1 items-center last:flex-none">
@@ -154,9 +204,13 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
         </div>
         {order.payment.status === "pending" && (
           <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl bg-sun-50 p-3">
-            <p className="flex-1 text-sm text-sun-600">Pesanan menunggu pembayaran {rupiah(order.total)}.</p>
+            <p className="flex-1 text-sm text-sun-600">
+              Menunggu pembayaran {rupiah(order.total)}
+              {order.payment.method !== "belum dipilih" && <> via <b>{order.payment.method}</b></>}
+              {order.payment.expiresAt && <> · bayar sebelum <b>{fmtDate(order.payment.expiresAt)} · {fmtTime(order.payment.expiresAt)}</b></>}.
+            </p>
             <button onClick={() => setPaying(true)} className="btn-primary btn-sm" data-track="bayar-dari-pesanan">
-              Bayar sekarang
+              {order.payment.method !== "belum dipilih" ? "Lihat cara bayar" : "Bayar sekarang"}
             </button>
           </div>
         )}
@@ -258,7 +312,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             )}
             <div className="flex justify-between font-extrabold"><span>Total</span><span className="text-jade-800">{rupiah(order.total)}</span></div>
             <p className="pt-1 text-xs text-ink/45">
-              Pembayaran: {order.payment.method} · {order.payment.status === "paid" ? "LUNAS" : "MENUNGGU"} · ref {order.payment.ref}
+              Pembayaran: {order.payment.method} · {{ paid: "LUNAS", pending: "MENUNGGU", expired: "KEDALUWARSA", failed: "GAGAL" }[order.payment.status]} · ref {order.payment.ref}
             </p>
           </div>
         </div>
@@ -292,7 +346,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
         </div>
       </div>
       {paying && (
-        <PaymentModal
+        <PaymentLauncher
           order={order}
           onClose={() => { setPaying(false); load(); }}
           onPaid={() => { setPaying(false); load(); }}

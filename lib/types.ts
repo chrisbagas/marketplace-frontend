@@ -61,12 +61,19 @@ export type Order = {
   discount: number;
   voucherCode?: string;
   total: number;
-  payment: { method: string; status: "pending" | "paid"; ref: string; paidAt?: number };
+  payment: {
+    method: string;
+    status: "pending" | "paid" | "expired" | "failed";
+    ref: string;
+    paidAt?: number;
+    expiresAt?: number; // batas bayar (saat menunggu pembayaran)
+    gateway?: string;
+  };
   // data dari kurir — selalu ada bila status "dikirim" / "selesai"
   shipment?: { courier: string; trackingNumber: string; shippedAt: number; deliveredAt?: number };
   autoCompleteAt?: number; // status "tiba": selesai otomatis bila pembeli tidak konfirmasi
   completedAt?: number;
-  status: "menunggu-pembayaran" | "dibayar" | "produksi" | "dikirim" | "tiba" | "selesai";
+  status: "menunggu-pembayaran" | "dibayar" | "produksi" | "dikirim" | "tiba" | "selesai" | "dibatalkan";
   timeline: { status: string; t: number }[];
 };
 
@@ -228,4 +235,81 @@ export type CreatorOrderSummary = {
   paidUnits: number;
   royaltyBooked: number;
   royaltyPending: number;
+};
+
+// Penarikan saldo kreator (GET /api/designer/payouts, GET /api/payouts).
+export type PayoutStatus = "diminta" | "diproses" | "dibayar" | "ditolak";
+
+export type BankAccount = { bankName: string; account: string; holder: string };
+
+export type PayoutBalance = {
+  pending: number; // royalti dari pesanan dibayar yang belum selesai
+  available: number; // bisa ditarik sekarang
+  inProcess: number; // pengajuan diminta/diproses
+  withdrawn: number; // sudah ditransfer
+  released: number; // total royalti dari pesanan selesai
+};
+
+export type Payout = {
+  id: number;
+  designerId: string;
+  designerName?: string;
+  amount: number;
+  status: PayoutStatus;
+  requestedAt: number;
+  processedAt?: number;
+  paidAt?: number;
+  bank?: BankAccount;
+  reference?: string;
+  note?: string;
+};
+
+// Keuangan platform (GET /api/finance, GET /api/producers) — admin.
+export type FinanceFlow = {
+  orders: number;
+  received: number; // dibayar pembeli (setelah diskon)
+  subtotal: number;
+  shipping: number;
+  discount: number; // voucher, ditanggung platform
+  production: number; // hak produsen: biaya produksi
+  shippingCost: number; // hak produsen: ongkir
+  creators: number; // royalti kreator
+  gatewayFees: number; // estimasi biaya Midtrans
+  platformIncome: number;
+};
+
+export type FinanceOwed = {
+  producersReady: number;
+  producersInProduction: number;
+  creatorsHeld: number;
+  creatorsAvailable: number;
+  cashEstimate: number;
+  platformCash: number;
+};
+
+export type ProductCost = { id: string; label: string; basePrice: number; productionCost: number };
+
+export type ProducerCharge = {
+  orderId: string;
+  orderStatus: Order["status"];
+  paidAt: number;
+  items: number;
+  production: number;
+  shipping: number;
+  ready: boolean;
+};
+
+export type ProducerPayout = { id: number; amount: number; reference: string; note?: string; createdAt: number };
+
+export type Producer = {
+  id: string;
+  name: string;
+  contact: string;
+  bank?: BankAccount;
+  active: boolean;
+  products: ProductCost[];
+  ready: number;
+  inProduction: number;
+  charges: ProducerCharge[];
+  payouts: ProducerPayout[];
 };
