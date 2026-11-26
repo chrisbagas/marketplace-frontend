@@ -4,7 +4,8 @@ import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Mockup from "@/components/Mockup";
 import { COLORS, type ProductType } from "@/lib/data";
-import { advanceOrder, getOrder, markDelivered, markPaid, ORDER_FLOW, ORDER_STATUS, SHIPPING_CARRIERS, shipOrder } from "@/lib/orders";
+import { advanceOrder, bookShipment, getOrder, markDelivered, markPaid, ORDER_FLOW, ORDER_STATUS, SHIPPING_CARRIERS, shipOrder, syncShipment } from "@/lib/orders";
+import { getShippingProvider, type ShippingProvider } from "@/lib/shipping";
 import { fmtDate, fmtTime, rupiah } from "@/lib/format";
 import type { Order } from "@/lib/types";
 
@@ -24,6 +25,8 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
   const [courier, setCourier] = useState("");
   const [resi, setResi] = useState("");
   const [editingResi, setEditingResi] = useState(false);
+  const [manualShip, setManualShip] = useState(false);
+  const [provider, setProvider] = useState<ShippingProvider>("flat");
 
   const load = useCallback(async () => {
     try {
@@ -35,6 +38,7 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
     }
   }, [id]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { getShippingProvider().then(setProvider).catch(() => {}); }, []);
 
   async function run(fn: () => Promise<Order>) {
     setBusy(true);
@@ -162,11 +166,36 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
           )}
           {order.status === "produksi" && (
             <div className="mt-2">
-              <p className="mb-3 text-sm text-ink/70">
-                Setelah paket diserahkan ke kurir, masukkan <b>nama kurir dan nomor resi</b> — pesanan tidak bisa ditandai
-                dikirim tanpa data ini, dan pembeli akan melihat resinya.
-              </p>
-              {shipForm(false)}
+              {provider === "biteship" && order.shipping.company ? (
+                <>
+                  <p className="mb-3 text-sm text-ink/70">
+                    Pembeli memilih <b>{order.shipping.courier}</b>. <b>Buat pengiriman</b> memesan kurir lewat Biteship: resi terbit
+                    otomatis, kurir menjemput paket, dan status &quot;tiba&quot; terbarui sendiri lewat pelacakan kurir.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button className="btn-primary" disabled={busy} onClick={() => run(() => bookShipment(order.id))} data-track="admin-buat-pengiriman">
+                      {busy ? "Membuat pengiriman…" : "Buat pengiriman (Biteship)"}
+                    </button>
+                    <button type="button" className="btn-secondary btn-sm" onClick={() => setManualShip((m) => !m)}>
+                      {manualShip ? "Sembunyikan resi manual" : "Isi resi manual"}
+                    </button>
+                  </div>
+                  {manualShip && (
+                    <div className="mt-4 border-t border-ink/8 pt-4">
+                      <p className="mb-3 text-xs text-ink/55">Cadangan bila Biteship bermasalah: serahkan paket ke kurir sendiri, lalu isi kurir dan resinya.</p>
+                      {shipForm(false)}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="mb-3 text-sm text-ink/70">
+                    Setelah paket diserahkan ke kurir, masukkan <b>nama kurir dan nomor resi</b> — pesanan tidak bisa ditandai
+                    dikirim tanpa data ini, dan pembeli akan melihat resinya.
+                  </p>
+                  {shipForm(false)}
+                </>
+              )}
             </div>
           )}
           {order.status === "dikirim" && order.shipment && (
@@ -193,9 +222,16 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
                 </div>
               )}
               <p className="text-xs text-ink/50">
-                Tandai tiba hanya setelah pelacakan kurir menyatakan paket sampai. Nanti dilakukan otomatis lewat integrasi kurir.
+                {provider === "biteship" && order.shipping.company
+                  ? "Status tiba masuk otomatis dari pelacakan Biteship. Tombol di bawah mengambil status terbaru bila webhook terlambat."
+                  : "Tandai tiba hanya setelah pelacakan kurir menyatakan paket sampai."}{" "}
                 Pesanan diselesaikan oleh pembeli — bukan admin.
               </p>
+              {provider === "biteship" && order.shipping.company && (
+                <button className="btn-secondary btn-sm" disabled={busy} onClick={() => run(() => syncShipment(order.id))}>
+                  Segarkan status kurir
+                </button>
+              )}
             </div>
           )}
           {order.status === "tiba" && (
@@ -274,6 +310,9 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
               <dl className="mt-2 space-y-1">
                 <div className="flex justify-between gap-3"><dt className="text-ink/55">Kurir</dt><dd className="font-semibold">{order.shipment.courier}</dd></div>
                 <div className="flex justify-between gap-3"><dt className="text-ink/55">No. resi</dt><dd className="font-mono font-semibold">{order.shipment.trackingNumber}</dd></div>
+                {order.shipment.courierStatus && (
+                  <div className="flex justify-between gap-3"><dt className="text-ink/55">Status kurir</dt><dd>{order.shipment.courierStatus}</dd></div>
+                )}
                 <div className="flex justify-between gap-3"><dt className="text-ink/55">Diserahkan</dt><dd>{fmtDate(order.shipment.shippedAt)} · {fmtTime(order.shipment.shippedAt)}</dd></div>
                 {order.shipment.deliveredAt ? (
                   <div className="flex justify-between gap-3"><dt className="text-ink/55">Tiba</dt><dd>{fmtDate(order.shipment.deliveredAt)} · {fmtTime(order.shipment.deliveredAt)}</dd></div>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { getFinance, getProducers, payProducer, saveProducer, setProductionCost } from "@/lib/finance";
+import { getFinance, getProducers, payProducer, saveProducer, setProductionCost, setWeight } from "@/lib/finance";
 import { ORDER_STATUS } from "@/lib/orders";
 import { maskAccount, PAYOUT_BANKS } from "@/lib/payouts";
 import { fmtDate, rupiah } from "@/lib/format";
@@ -70,6 +70,7 @@ export default function FinancePanel() {
               <Line label={`Uang masuk dari pembeli (${f.orders} pesanan)`} value={f.received} strong />
               <Line label="Produsen · biaya produksi" value={-f.production} />
               <Line label="Produsen · ongkir (produsen yang mengirim)" value={-f.shippingCost} />
+              <Line label="Ongkir kurir (Biteship)" value={-f.courierCosts} />
               <Line label="Kreator · royalti" value={-f.creators} />
               <Line label="Midtrans · biaya transaksi (estimasi)" value={-f.gatewayFees} />
               <div className="border-t border-ink/10 pt-2">
@@ -237,19 +238,21 @@ function ProducerCard({ p, onChanged }: { p: Producer; onChanged: () => void }) 
 }
 
 // Tarif vendor per pcs. Margin platform = harga dasar − biaya produksi;
-// di atas harga dasar adalah margin kreator.
+// di atas harga dasar adalah margin kreator. Berat per pcs dipakai menghitung ongkir.
 function CostTable({ p, onChanged }: { p: Producer; onChanged: () => void }) {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
 
-  async function save(id: string) {
+  async function save(id: string, field: "cost" | "weight" = "cost") {
+    const key = field === "cost" ? id : `w:${id}`;
     setError("");
     setSaved("");
     try {
-      await setProductionCost(id, Number(draft[id]));
-      setDraft((d) => { const n = { ...d }; delete n[id]; return n; });
-      setSaved(id);
+      if (field === "cost") await setProductionCost(id, Number(draft[key]));
+      else await setWeight(id, Number(draft[key]));
+      setDraft((d) => { const n = { ...d }; delete n[key]; return n; });
+      setSaved(key);
       onChanged();
     } catch (err) {
       setError((err as Error).message);
@@ -267,6 +270,7 @@ function CostTable({ p, onChanged }: { p: Producer; onChanged: () => void }) {
             <th className="py-2 font-semibold">Produk</th>
             <th className="py-2 font-semibold">Harga dasar</th>
             <th className="py-2 font-semibold">Biaya vendor</th>
+            <th className="py-2 font-semibold">Berat (gram)</th>
             <th className="py-2 text-right font-semibold">Margin KaryaKita</th>
           </tr>
         </thead>
@@ -290,6 +294,21 @@ function CostTable({ p, onChanged }: { p: Producer; onChanged: () => void }) {
                     />
                     {changed && <button className="btn-primary btn-sm px-2 py-1 text-[11px]" onClick={() => save(c.id)}>Simpan</button>}
                     {saved === c.id && !changed && <span className="text-jade-700">✓</span>}
+                  </div>
+                </td>
+                <td className="py-2">
+                  <div className="flex items-center gap-1">
+                    <input
+                      className="input w-20 px-2 py-1 text-xs"
+                      inputMode="numeric"
+                      aria-label={`Berat ${c.label} (gram)`}
+                      value={draft[`w:${c.id}`] ?? String(c.weightG)}
+                      onChange={(e) => setDraft({ ...draft, [`w:${c.id}`]: e.target.value.replace(/\D/g, "") })}
+                    />
+                    {draft[`w:${c.id}`] !== undefined && Number(draft[`w:${c.id}`]) !== c.weightG && (
+                      <button className="btn-primary btn-sm px-2 py-1 text-[11px]" onClick={() => save(c.id, "weight")}>Simpan</button>
+                    )}
+                    {saved === `w:${c.id}` && draft[`w:${c.id}`] === undefined && <span className="text-jade-700">✓</span>}
                   </div>
                 </td>
                 <td className={`py-2 text-right font-semibold ${c.basePrice - cost < 0 ? "text-coral-600" : "text-jade-800"}`}>{rupiah(c.basePrice - cost)}</td>

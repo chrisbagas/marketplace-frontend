@@ -20,12 +20,12 @@ const send = (path: string, body: unknown, method = "POST") =>
     signal: AbortSignal.timeout(15_000),
   });
 
-export async function getQuote(items: CartItem[], courier: string, voucher: string): Promise<Quote> {
-  return (await json<{ quote: Quote }>(await send("/api/checkout/quote", { items, courier, voucher }))).quote;
+export async function getQuote(items: CartItem[], courier: string, voucher: string, areaId = ""): Promise<Quote> {
+  return (await json<{ quote: Quote }>(await send("/api/checkout/quote", { items, courier, voucher, areaId }))).quote;
 }
 
 export type CheckoutInput = {
-  customer: { name: string; email: string; phone: string; address: string; city: string; postal: string };
+  customer: { name: string; email: string; phone: string; address: string; city: string; postal: string; areaId?: string };
   notes: string;
   items: CartItem[];
   courier: string;
@@ -56,6 +56,16 @@ export async function advanceOrder(id: string): Promise<Order> {
 export async function shipOrder(id: string, courier: string, trackingNumber: string, update = false): Promise<Order> {
   const action = update ? "update-shipment" : "ship";
   return (await json<{ order: Order }>(await send(`/api/orders/${id}`, { action, courier, trackingNumber }, "PATCH"))).order;
+}
+
+// admin: pesan kurir lewat Biteship — resi terbit otomatis dan pesanan menjadi "dikirim"
+export async function bookShipment(id: string): Promise<Order> {
+  return (await json<{ order: Order }>(await send(`/api/orders/${id}`, { action: "ship-biteship" }, "PATCH"))).order;
+}
+
+// admin: ambil status pelacakan terbaru dari Biteship (cadangan bila webhook tidak sampai)
+export async function syncShipment(id: string): Promise<Order> {
+  return (await json<{ order: Order }>(await send(`/api/orders/${id}`, { action: "sync-shipment" }, "PATCH"))).order;
 }
 
 // admin: dikirim → tiba, setelah ada laporan/pelacakan kurir bahwa paket sampai

@@ -54,11 +54,12 @@ export type Order = {
   createdAt: number;
   userId?: string;
   username?: string; // akun pemesan (kosong = pesanan guest lama)
-  customer: { name: string; email: string; phone: string; address: string; city: string; postal: string };
+  customer: { name: string; email: string; phone: string; address: string; city: string; postal: string; areaId?: string };
   notes?: string;
   items: CartLine[];
   subtotal: number;
-  shipping: { courier: string; cost: number };
+  // company/type = layanan Biteship (mis. jne / reg); kosong pada tarif flat (dev)
+  shipping: { courier: string; cost: number; company?: string; type?: string };
   discount: number;
   voucherCode?: string;
   total: number;
@@ -71,7 +72,7 @@ export type Order = {
     gateway?: string;
   };
   // data dari kurir — selalu ada bila status "dikirim" / "selesai"
-  shipment?: { courier: string; trackingNumber: string; shippedAt: number; deliveredAt?: number };
+  shipment?: { courier: string; trackingNumber: string; shippedAt: number; deliveredAt?: number; courierStatus?: string };
   autoCompleteAt?: number; // status "tiba": selesai otomatis bila pembeli tidak konfirmasi
   completedAt?: number;
   status: "menunggu-pembayaran" | "dibayar" | "produksi" | "dikirim" | "tiba" | "selesai" | "dibatalkan";
@@ -102,6 +103,7 @@ export type Profile = {
   address: string;
   city: string;
   postal: string;
+  areaId: string; // Biteship area id tujuan (kosong = belum dipilih)
   preferredPayment: string;
   preferredCourier: string;
   settings: Record<string, unknown>;
@@ -192,6 +194,8 @@ export type Quote = {
   voucher?: { code: string; description: string; kind: "percent" | "fixed" | "shipping" };
   voucherError?: string;
   couriers: Courier[];
+  weight: number; // gram
+  provider: "biteship" | "flat";
 };
 
 export type Voucher = {
@@ -274,6 +278,7 @@ export type FinanceFlow = {
   discount: number; // voucher, ditanggung platform
   production: number; // hak produsen: biaya produksi
   shippingCost: number; // hak produsen: ongkir
+  courierCosts: number; // ongkos kurir Biteship yang dibayar platform
   creators: number; // royalti kreator
   gatewayFees: number; // estimasi biaya Midtrans
   platformIncome: number;
@@ -288,7 +293,10 @@ export type FinanceOwed = {
   platformCash: number;
 };
 
-export type ProductCost = { id: string; label: string; basePrice: number; productionCost: number };
+export type ProductCost = { id: string; label: string; basePrice: number; productionCost: number; weightG: number };
+
+// Autocomplete kota/kecamatan tujuan (GET /api/shipping/areas)
+export type AreaOption = { id: string; name: string; city: string; province: string; district: string; postal: string };
 
 export type ProducerCharge = {
   orderId: string;

@@ -37,6 +37,11 @@ export async function setProductionCost(typeId: string, productionCost: number) 
   await json(await send(`/api/product-types/${typeId}`, { productionCost }, "PATCH"));
 }
 
+// berat paket per pcs (gram) — dasar hitungan ongkir Biteship
+export async function setWeight(typeId: string, weightG: number) {
+  await json(await send(`/api/product-types/${typeId}`, { weightG }, "PATCH"));
+}
+
 export async function payProducer(id: string, reference: string, note: string): Promise<ProducerPayout> {
   return (await json<{ payout: ProducerPayout }>(await send(`/api/producers/${id}/payouts`, { reference, note }))).payout;
 }

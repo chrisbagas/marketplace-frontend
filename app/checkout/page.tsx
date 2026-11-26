@@ -9,6 +9,9 @@ import { clearCart, getCart, type CartItem } from "@/lib/cart";
 import { COLORS, type ProductType } from "@/lib/data";
 import { useSession } from "@/lib/auth";
 import { createOrder, getQuote } from "@/lib/orders";
+import AreaPicker from "@/components/AreaPicker";
+import { getShippingProvider, type ShippingProvider } from "@/lib/shipping";
+import type { AreaOption } from "@/lib/types";
 import { rupiah } from "@/lib/format";
 import { track } from "@/lib/track";
 import type { Order, Profile, Quote } from "@/lib/types";
@@ -21,12 +24,12 @@ const cleanPhone = (p: string) => p.replace(/[\s\-.()]/g, "");
 
 type Form = { name: string; email: string; phone: string; address: string; city: string; postal: string };
 
-function fieldErrors(f: Form): Partial<Record<keyof Form, string>> {
+function fieldErrors(f: Form, areaPicker = false): Partial<Record<keyof Form, string>> {
   const e: Partial<Record<keyof Form, string>> = {};
   if (!f.name.trim()) e.name = "Wajib diisi";
   if (!PHONE_RE.test(cleanPhone(f.phone))) e.phone = "8–15 digit, mis. 081234567890";
   if (f.address.trim().length < 10) e.address = "Tulis lengkap: jalan, nomor, RT/RW";
-  if (!f.city.trim()) e.city = "Wajib diisi";
+  if (!areaPicker && !f.city.trim()) e.city = "Wajib diisi";
   if (f.postal && !/^[0-9]{5}$/.test(f.postal)) e.postal = "5 digit";
   if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) e.email = "Format email tidak valid";
   return e;
@@ -40,6 +43,8 @@ export default function CheckoutPage() {
   const [notes, setNotes] = useState("");
   const [saveProfile, setSaveProfile] = useState(true);
   const [courierId, setCourierId] = useState("SiCepat REG");
+  const [provider, setProvider] = useState<ShippingProvider | null>(null);
+  const [area, setArea] = useState<{ id: string; label: string } | null>(null);
   const [voucherInput, setVoucherInput] = useState("");
   const [voucher, setVoucher] = useState(""); // kode yang sedang dipakai
   const [voucherMsg, setVoucherMsg] = useState("");
@@ -49,6 +54,11 @@ export default function CheckoutPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [order, setOrder] = useState<Order | null>(null);
+
+  // penyedia pengiriman dari server: biteship = pilih area + ongkir langsung, flat = dev
+  useEffect(() => {
+    getShippingProvider().then(setProvider).catch(() => setProvider("flat"));
+  }, []);
 
   // keranjang + isi otomatis dari profil tersimpan
   useEffect(() => {
@@ -66,17 +76,22 @@ export default function CheckoutPage() {
           postal: f.postal || profile.postal || "",
         }));
         if (profile.preferredCourier) setCourierId(profile.preferredCourier);
+        if (profile.areaId && profile.city) {
+          setArea({ id: profile.areaId, label: `${profile.city}${profile.postal ? ` · ${profile.postal}` : ""}` });
+        }
         // alamat sudah tersimpan → jangan timpa profil kecuali dicentang lagi
         if (profile.address && profile.phone) setSaveProfile(false);
       })
       .catch(() => {});
   }, []);
 
+  const areaId = area?.id ?? "";
+
   const refreshQuote = useCallback(async (code: string) => {
     const cart = getCart();
     if (cart.length === 0) return null;
     try {
-      const q = await getQuote(cart, courierId, code);
+      const q = await getQuote(cart, courierId, code, areaId);
       setQuote(q);
       setQuoteError("");
       return q;
@@ -84,7 +99,7 @@ export default function CheckoutPage() {
       setQuoteError((e as Error).message);
       return null;
     }
-  }, [courierId]);
+  }, [courierId, areaId]);
 
   // hitung ulang saat kurir berubah (voucher yang sedang dipakai ikut dicek ulang)
   useEffect(() => {
@@ -97,6 +112,17 @@ export default function CheckoutPage() {
       }
     });
   }, [items, courierId, voucher, refreshQuote]);
+
+  // Biteship: pilihan kurir lama bisa tidak berlaku untuk tujuan baru → ikuti pilihan server (termurah)
+  useEffect(() => {
+    if (!quote || quote.provider !== "biteship" || quote.couriers.length === 0) return;
+    if (!quote.couriers.some((c) => c.id === courierId)) setCourierId(quote.courier.id);
+  }, [quote, courierId]);
+
+  function pickArea(a: AreaOption) {
+    setArea({ id: a.id, label: a.name });
+    setForm((f) => ({ ...f, city: a.city || a.district || f.city, postal: a.postal || f.postal }));
+  }
 
   async function applyVoucher(e?: React.FormEvent) {
     e?.preventDefault();
@@ -131,8 +157,10 @@ export default function CheckoutPage() {
     );
   }
 
-  const errs = fieldErrors(form);
-  const formValid = Object.keys(errs).length === 0;
+  const live = provider === "biteship";
+  const errs = fieldErrors(form, live);
+  const areaErr = live && !area ? "Pilih kota/kecamatan dari daftar" : "";
+  const formValid = Object.keys(errs).length === 0 && !areaErr;
   const showErr = (k: keyof Form) => touched && errs[k] && <p className="mt-1 text-xs text-coral-600">{errs[k]}</p>;
   const units = quote?.items.reduce((a, i) => a + i.qty, 0) ?? items.reduce((a, i) => a + i.qty, 0);
 
@@ -144,7 +172,7 @@ export default function CheckoutPage() {
     setError("");
     try {
       const o = await createOrder({
-        customer: { ...form, phone: cleanPhone(form.phone) },
+        customer: { ...form, phone: cleanPhone(form.phone), areaId: live ? area?.id : undefined },
         notes,
         items: getCart(),
         courier: courierId,
@@ -218,9 +246,18 @@ export default function CheckoutPage() {
                 {showErr("address")}
               </div>
               <div>
-                <label className="label" htmlFor="co-city">Kota / Kabupaten *</label>
-                {input("city", { placeholder: "Bandung", autoComplete: "address-level2" })}
-                {showErr("city")}
+                <label className="label" htmlFor={live ? "co-area" : "co-city"}>{live ? "Kota / Kecamatan *" : "Kota / Kabupaten *"}</label>
+                {live ? (
+                  <>
+                    <AreaPicker value={area} onSelect={pickArea} error={touched ? areaErr : ""} />
+                    {touched && areaErr && <p className="mt-1 text-xs text-coral-600">{areaErr}</p>}
+                  </>
+                ) : (
+                  <>
+                    {input("city", { placeholder: "Bandung", autoComplete: "address-level2" })}
+                    {showErr("city")}
+                  </>
+                )}
               </div>
               <div>
                 <label className="label" htmlFor="co-postal">Kode pos</label>
@@ -240,6 +277,10 @@ export default function CheckoutPage() {
 
           <section className="card p-5">
             <p className="font-bold">Kurir</p>
+            {live && !area && <p className="mt-3 text-sm text-ink/55">Pilih kota/kecamatan tujuan untuk melihat ongkir.</p>}
+            {live && area && quote && quote.couriers.length === 0 && !quoteError && (
+              <p className="mt-3 text-sm text-ink/55">Belum ada kurir yang melayani tujuan ini.</p>
+            )}
             <div className="mt-3 space-y-2">
               {(quote?.couriers ?? []).map((c) => (
                 <label key={c.id} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${courierId === c.id ? "border-jade-700 bg-jade-50" : "border-ink/10 hover:border-ink/25"}`}>
@@ -252,6 +293,7 @@ export default function CheckoutPage() {
                 </label>
               ))}
             </div>
+            {live && quote && quote.weight > 0 && <p className="mt-3 text-xs text-ink/45">Berat paket ± {quote.weight.toLocaleString("id-ID")} gram.</p>}
           </section>
         </div>
 
