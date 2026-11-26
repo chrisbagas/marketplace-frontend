@@ -54,6 +54,7 @@ export type Order = {
   createdAt: number;
   userId?: string;
   username?: string; // akun pemesan (kosong = pesanan guest lama)
+  userDeleted?: boolean; // akun pemesan sudah dihapus (dianonimkan) → tampilkan "Pengguna dihapus"
   customer: { name: string; email: string; phone: string; address: string; city: string; postal: string };
   notes?: string;
   items: CartLine[];

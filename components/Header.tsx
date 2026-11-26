@@ -136,6 +136,7 @@ function AccountMenu({ user, active }: { user: SessionUser; active: boolean }) {
   const links = [
     { href: "/pesanan", label: "Pesanan saya" },
     { href: "/profile", label: "Profil & desain saya" },
+    { href: "/akun", label: "Pengaturan akun" },
     canAccess(user, "/designer") && { href: "/designer", label: "Studio Kreator" },
     canAccess(user, "/admin") && { href: "/admin", label: "Dashboard admin" },
   ].filter(Boolean) as { href: string; label: string }[];

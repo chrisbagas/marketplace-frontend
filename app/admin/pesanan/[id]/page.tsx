@@ -118,7 +118,7 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
           <h1 className="text-2xl font-extrabold tracking-tight">Pesanan {order.id}</h1>
           <p className="text-sm text-ink/55">
             Dibuat {fmtDate(order.createdAt)} · {fmtTime(order.createdAt)} · {units} item ·{" "}
-            {order.username ? <>akun <b>@{order.username}</b></> : "guest"}
+            {order.userDeleted ? <b>Pengguna dihapus</b> : order.username ? <>akun <b>@{order.username}</b></> : "guest"}
           </p>
         </div>
         <span className={`chip ${st.chip}`}>{st.label}</span>

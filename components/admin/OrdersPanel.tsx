@@ -119,7 +119,9 @@ export default function OrdersPanel() {
                   </td>
                   <td className="p-3">
                     <p className="font-semibold">{o.customer.name}</p>
-                    <p className="text-xs text-ink/45">{o.username ? `@${o.username}` : "guest"} · {o.customer.city}</p>
+                    <p className="text-xs text-ink/45">
+                      {[o.userDeleted ? "akun dihapus" : o.username ? `@${o.username}` : "guest", o.customer.city].filter(Boolean).join(" · ")}
+                    </p>
                   </td>
                   <td className="p-3 text-xs text-ink/70">
                     {units} pcs
