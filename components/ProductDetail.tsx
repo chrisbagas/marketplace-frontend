@@ -7,6 +7,7 @@ import Mockup, { PHOTO_CREDIT, photoInfo, viewsFor, type MockupView } from "@/co
 import ProductCard from "@/components/ProductCard";
 import SizeGuide from "@/components/SizeGuide";
 import { COLORS, designerById } from "@/lib/data";
+import ReportDialog from "@/components/ReportDialog";
 import type { Product, Review } from "@/lib/types";
 import { addManyToCart, addToCart, MAX_QTY } from "@/lib/cart";
 import { rupiah, compact, timeAgo } from "@/lib/format";
@@ -233,6 +234,9 @@ export default function ProductDetail({ listing, related }: { listing: Product; 
               </div>
             ))}
           </div>
+          <p className="mt-3 text-right">
+            <ReportDialog listingId={listing.id} title={listing.title} />
+          </p>
         </div>
       </div>
 

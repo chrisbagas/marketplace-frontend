@@ -314,3 +314,26 @@ export type Producer = {
   charges: ProducerCharge[];
   payouts: ProducerPayout[];
 };
+
+// Laporan desain (POST /api/reports, GET/PATCH /api/reports — admin).
+export type ReportReason = "hak-cipta" | "merek-dagang" | "konten-tidak-pantas" | "lainnya";
+export type ReportStatus = "baru" | "ditinjau" | "ditindak" | "ditolak";
+
+export type DesignReport = {
+  id: number;
+  listingId: string;
+  listingTitle: string;
+  listingActive: boolean;
+  designId: string;
+  designUri: string;
+  designerId: string;
+  designerName: string;
+  reason: ReportReason;
+  email: string;
+  description: string;
+  evidenceUrl?: string;
+  status: ReportStatus;
+  adminNote?: string;
+  createdAt: number;
+  updatedAt: number;
+};

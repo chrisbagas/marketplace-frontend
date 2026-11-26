@@ -7,6 +7,8 @@ import SearchPanel from "@/components/admin/SearchPanel";
 import VouchersPanel from "@/components/admin/VouchersPanel";
 import PayoutsPanel from "@/components/admin/PayoutsPanel";
 import FinancePanel from "@/components/admin/FinancePanel";
+import ReportsPanel from "@/components/admin/ReportsPanel";
+import { getReports } from "@/lib/reports";
 import { StatTile, LineChart, HBarList, Funnel, VitalTile } from "@/components/charts";
 import { COLORS } from "@/lib/data";
 import { rupiah, compact, timeAgo, fmtDate } from "@/lib/format";
@@ -27,7 +29,7 @@ type Stats = {
   pendingDesigns: number;
 };
 
-const TABS = ["Ringkasan", "Pesanan", "Keuangan", "Penarikan", "Voucher", "Pencarian", "Perilaku Pelanggan", "Performa", "Moderasi"] as const;
+const TABS = ["Ringkasan", "Pesanan", "Keuangan", "Penarikan", "Voucher", "Pencarian", "Laporan", "Perilaku Pelanggan", "Performa", "Moderasi"] as const;
 
 const EVENT_LABEL: Record<string, { icon: string; text: (e: Stats["recentEvents"][number]) => string }> = {
   page_view: { icon: "👁️", text: (e) => `Membuka halaman ${e.page}` },
@@ -54,16 +56,19 @@ export default function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [pending, setPending] = useState<DesignSubmission[]>([]);
   const [pendingReviews, setPendingReviews] = useState<Review[]>([]);
+  const [newReports, setNewReports] = useState(0);
 
   const load = useCallback(async () => {
-    const [s, d, rv] = await Promise.all([
+    const [s, d, rv, rp] = await Promise.all([
       fetch("/api/stats").then((r) => r.json()),
       fetch("/api/designs?status=review").then((r) => r.json()),
       fetch("/api/reviews?status=review").then((r) => r.json()),
+      getReports("", 0).catch(() => null), // counts only; the tab badge
     ]);
     setStats(s);
     setPending(d.designs ?? []);
     setPendingReviews(rv.reviews ?? []);
+    setNewReports(rp?.counts.baru ?? 0);
   }, []);
 
   // buka tab dari URL, mis. /admin?tab=Pesanan (dipakai tombol kembali di detail pesanan)
@@ -130,6 +135,9 @@ export default function AdminPage() {
             {t}
             {t === "Moderasi" && pending.length + pendingReviews.length > 0 && (
               <span className="ml-1 rounded-full bg-coral-500 px-1.5 text-[10px] font-bold text-white">{pending.length + pendingReviews.length}</span>
+            )}
+            {t === "Laporan" && newReports > 0 && (
+              <span className="ml-1 rounded-full bg-coral-500 px-1.5 text-[10px] font-bold text-white">{newReports}</span>
             )}
           </button>
         ))}
@@ -291,6 +299,7 @@ export default function AdminPage() {
       {tab === "Penarikan" && <PayoutsPanel />}
       {tab === "Voucher" && <VouchersPanel />}
       {tab === "Pencarian" && <SearchPanel />}
+      {tab === "Laporan" && <ReportsPanel />}
 
       {tab === "Moderasi" && (
         <div className="mt-6">
