@@ -11,7 +11,7 @@ import { COLORS, PRODUCT_TYPES } from "@/lib/data";
 import { getProducts } from "@/lib/api";
 import { useSession } from "@/lib/auth";
 import { getDesignerPayouts, type DesignerPayouts } from "@/lib/payouts";
-import { rupiah, compact, timeAgo } from "@/lib/format";
+import { rupiah, compact, timeAgo, fmtCm } from "@/lib/format";
 import type { DesignSubmission, Product } from "@/lib/types";
 
 // Dashboard milik kreator yang sedang login (profil toko dari /api/auth/me).
@@ -142,6 +142,7 @@ export default function DesignerDashboard() {
               <tr className="border-b border-ink/8 text-xs text-ink/50">
                 <th className="p-3 font-semibold">Produk</th>
                 <th className="p-3 font-semibold">Harga</th>
+                <th className="p-3 font-semibold">Lebar cetak</th>
                 <th className="p-3 font-semibold">Terjual</th>
                 <th className="p-3 font-semibold">Rating</th>
                 <th className="p-3 font-semibold">Royalti / pcs</th>
@@ -163,6 +164,7 @@ export default function DesignerDashboard() {
                     </Link>
                   </td>
                   <td className="p-3">{rupiah(l.price)}</td>
+                  <td className="p-3">{l.widthCm != null ? `${fmtCm(l.widthCm)} cm` : "—"}</td>
                   <td className="p-3">{compact(l.sold)}</td>
                   <td className="p-3">★ {l.rating}</td>
                   <td className="p-3 font-semibold text-jade-800">{rupiah(margin(l))}</td>

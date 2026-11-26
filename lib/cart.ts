@@ -9,6 +9,9 @@ export type CartItem = {
   qty: number;
   price: number;
   designUri?: string;
+  // print spec of a custom design (cm); catalog lines get theirs from the listing server-side
+  widthCm?: number;
+  offsetYCm?: number;
 };
 
 const KEY = "kk-cart";

@@ -23,6 +23,8 @@ export type Product = {
   category?: string; // product category id (pakaian, tas, rumah)
   attributes?: string[]; // attribute value ids (tema, gaya, acara) — see lib/search.ts Facets
   active?: boolean;
+  widthCm?: number; // lebar cetak (cm) — dari Studio kreator; kosong pada katalog statis (fallback offline)
+  offsetYCm?: number; // geser vertikal dari TENGAH area cetak (cm): + ke bawah, − ke atas
 };
 
 export type TrackEvent = {
@@ -47,6 +49,8 @@ export type CartLine = {
   qty: number;
   price: number;
   designUri?: string;
+  widthCm: number; // snapshot lebar cetak (cm) untuk vendor
+  offsetYCm: number; // snapshot geser vertikal dari tengah area cetak (cm)
 };
 
 export type Order = {
@@ -92,6 +96,8 @@ export type DesignSubmission = {
   tags?: string[];
   attributes?: string[]; // attribute value ids
   listingId?: string; // terisi setelah disetujui → tayang di katalog
+  widthCm: number;
+  offsetYCm: number;
 };
 
 export type Profile = {
@@ -179,6 +185,8 @@ export type QuoteLine = {
   price: number; // harga satuan dari server
   lineTotal: number;
   designUri?: string;
+  widthCm: number;
+  offsetYCm: number;
 };
 
 // Ringkasan harga yang dihitung server — angka ini yang ditagih.

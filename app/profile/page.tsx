@@ -55,6 +55,8 @@ export default function ProfilePage() {
       qty: 1,
       price: pt.base + CUSTOM_FEE,
       designUri: d.uri,
+      widthCm: d.widthCm,
+      offsetYCm: d.offsetYCm,
     });
     track("add_to_cart", { label: "custom-profil", value: pt.base + CUSTOM_FEE });
   }

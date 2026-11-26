@@ -5,7 +5,7 @@ import Link from "next/link";
 import Mockup from "@/components/Mockup";
 import { COLORS, type ProductType } from "@/lib/data";
 import { advanceOrder, getOrder, markDelivered, markPaid, ORDER_FLOW, ORDER_STATUS, SHIPPING_CARRIERS, shipOrder } from "@/lib/orders";
-import { fmtDate, fmtTime, rupiah } from "@/lib/format";
+import { fmtCm, fmtDate, fmtPrintOffset, fmtTime, rupiah } from "@/lib/format";
 import type { Order } from "@/lib/types";
 
 // Detail pesanan untuk admin (operasional): data lengkap pembeli & akun, file
@@ -218,7 +218,7 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
             {order.items.map((it, i) => (
               <div key={i} className="flex items-center gap-4 py-3">
                 <div className="h-20 w-20 shrink-0 rounded-xl bg-jade-50 p-1">
-                  <Mockup type={it.type as ProductType} colorHex={COLORS[it.color]?.hex ?? "#ddd"} designUri={it.designUri} />
+                  <Mockup type={it.type as ProductType} colorHex={COLORS[it.color]?.hex ?? "#ddd"} designUri={it.designUri} widthCm={it.widthCm} offsetYCm={it.offsetYCm} />
                 </div>
                 <div className="min-w-0 flex-1 text-sm">
                   <p className="font-semibold">{it.title}</p>
@@ -241,6 +241,9 @@ export default function AdminOrderPage({ params }: { params: Promise<{ id: strin
                       File desain ↓
                     </a>
                   )}
+                  <p className="mt-1 max-w-48 text-xs text-ink/60">
+                    Lebar cetak <b className="text-ink">{fmtCm(it.widthCm)} cm</b> · {fmtPrintOffset(it.offsetYCm)}
+                  </p>
                 </div>
               </div>
             ))}

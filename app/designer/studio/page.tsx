@@ -103,6 +103,8 @@ export default function StudioPage() {
         color: colorId,
         price,
         uri: designUri,
+        widthCm,
+        offsetYCm: offsetCm,
         attributes: selAttrs,
         tags: tagsInput.split(",").map((t) => t.trim()).filter(Boolean),
       }),

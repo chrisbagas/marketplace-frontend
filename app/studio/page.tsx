@@ -102,6 +102,8 @@ export default function CustomStudioPage() {
       qty: 1,
       price,
       designUri,
+      widthCm,
+      offsetYCm: offsetCm,
     });
     track("add_to_cart", { label: "custom", value: price });
     setNotice("✓ Masuk keranjang! Lanjut ke pembayaran lewat ikon keranjang.");

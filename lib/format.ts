@@ -18,3 +18,13 @@ export function timeAgo(t: number) {
   if (h < 24) return `${h} jam lalu`;
   return `${Math.floor(h / 24)} hari lalu`;
 }
+
+// Centimetres with an Indonesian decimal comma ("18,5"), no trailing ",0".
+export const fmtCm = (n: number) => n.toLocaleString("id-ID", { maximumFractionDigits: 1 });
+
+// Where the print sits: offsetYCm is measured from the centre of the print area
+// (positive = towards the hem, negative = towards the collar), same as Mockup.
+export function fmtPrintOffset(offsetYCm: number) {
+  if (!offsetYCm) return "tepat di tengah area cetak";
+  return `${fmtCm(Math.abs(offsetYCm))} cm ${offsetYCm > 0 ? "di bawah" : "di atas"} tengah area cetak`;
+}
