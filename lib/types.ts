@@ -20,7 +20,8 @@ export type Product = {
   sizes: string[];
   colorIds: string[];
   tags: string[];
-  categories?: string[];
+  category?: string; // product category id (pakaian, tas, rumah)
+  attributes?: string[]; // attribute value ids (tema, gaya, acara) — see lib/search.ts Facets
   active?: boolean;
 };
 
@@ -82,7 +83,7 @@ export type DesignSubmission = {
   status: "review" | "disetujui" | "ditolak";
   note?: string;
   tags?: string[];
-  categories?: string[];
+  attributes?: string[]; // attribute value ids
   listingId?: string; // terisi setelah disetujui → tayang di katalog
 };
 

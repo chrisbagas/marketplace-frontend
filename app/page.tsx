@@ -3,6 +3,7 @@ import Mockup from "@/components/Mockup";
 import ProductCard from "@/components/ProductCard";
 import { ALL_LISTINGS, DESIGNERS, COLORS, listingById } from "@/lib/data";
 import { getProducts } from "@/lib/api";
+import { getTaxonomy } from "@/lib/search";
 import type { Product } from "@/lib/types";
 import { compact } from "@/lib/format";
 
@@ -16,6 +17,10 @@ const CATEGORIES = [
 export default async function HomePage() {
   // tren dari database; fallback ke seed statis bila backend belum jalan
   const listings: Product[] = await getProducts().catch(() => ALL_LISTINGS);
+  // themes that actually have products, busiest first
+  const themes = await getTaxonomy()
+    .then((t) => (t.attributes.find((a) => a.id === "tema")?.values ?? []).filter((v) => v.count > 0).sort((a, b) => b.count - a.count))
+    .catch(() => []);
   const trending = [...listings].sort((a, b) => b.sold - a.sold).slice(0, 8);
   const heroA = listingById("kaos-anak-senja")!;
   const heroB = listingById("mug-kopi-dulu")!;
@@ -85,6 +90,24 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      {themes.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 pb-8">
+          <h2 className="mb-4 text-2xl font-extrabold tracking-tight">Jelajahi tema</h2>
+          <div className="flex flex-wrap gap-2">
+            {themes.map((t) => (
+              <Link
+                key={t.id}
+                href={`/products?attr=${t.id}`}
+                className="chip border border-ink/12 bg-white px-4 py-2 text-sm text-ink/75 transition hover:border-jade-600 hover:text-jade-700"
+                data-track={`tema-${t.id}`}
+              >
+                {t.emoji} {t.label} <span className="ml-1 text-ink/40">{t.count}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* trending */}
       <section className="mx-auto max-w-6xl px-4 py-6">
