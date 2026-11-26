@@ -26,7 +26,8 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob:${FILES_ORIGIN ? ` ${FILES_ORIGIN}` : ""}`,
   "font-src 'self' data:",
-  `connect-src 'self' ${[...MIDTRANS_APP, ...MIDTRANS_API].join(" ")}${isProd ? "" : " ws: wss:"}`,
+  // FILES_ORIGIN: browsers PUT uploads straight to object storage via presigned URLs.
+  `connect-src 'self' ${[...MIDTRANS_APP, ...MIDTRANS_API].join(" ")}${FILES_ORIGIN ? ` ${FILES_ORIGIN}` : ""}${isProd ? "" : " ws: wss:"}`,
   `frame-src ${MIDTRANS_APP.join(" ")}`,
   "object-src 'none'",
   "base-uri 'self'",
