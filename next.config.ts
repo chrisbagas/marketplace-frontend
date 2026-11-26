@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 // Semua panggilan /api/* diteruskan ke backend Go (folder ../backend).
 // Frontend tetap memanggil fetch("/api/...") — tanpa CORS, tanpa hardcode host.
@@ -21,4 +22,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry wrapper: source maps are uploaded only when SENTRY_AUTH_TOKEN is set (plus
+// SENTRY_ORG and SENTRY_PROJECT); otherwise it only wires up instrumentation.
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  telemetry: false,
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+  // Errors only (tracesSampleRate is 0): drop tracing code and SDK debug logging to keep the bundle small.
+  bundleSizeOptimizations: { excludeTracing: true, excludeDebugStatements: true },
+});
