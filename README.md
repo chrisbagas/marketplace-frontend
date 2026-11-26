@@ -26,3 +26,7 @@ Halaman kreator, admin, profil, dan Custom butuh login (`/login`). Akun demo, pa
 Email verifikasi & reset password di dev tertangkap di Mailpit: http://localhost:8025.
 
 Dokumentasi alur lengkap: [`WORKFLOW.md`](./WORKFLOW.md).
+
+Produksi: `next.config.ts` memakai `output: "standalone"` dan `Dockerfile` membangun image `node:22-alpine`
+(non-root). Image ini dijalankan lewat `deploy/compose.prod.yml` di repo backend (`API_URL`, `FILES_ORIGIN`, `SITE_URL`
+dibaca saat **build**); lihat `deploy/README.md` di sana.
