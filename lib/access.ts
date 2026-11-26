@@ -9,6 +9,7 @@ export const PROTECTED: { prefix: string; roles?: Role[] }[] = [
   { prefix: "/profile" },
   { prefix: "/checkout" },
   { prefix: "/pesanan" },
+  { prefix: "/order" },
   { prefix: "/studio" },
 ];
 

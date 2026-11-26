@@ -268,6 +268,11 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             Kelola pesanan ini di dashboard admin →
           </Link>
         )}
+        {order.payment.status === "paid" && order.status !== "dibatalkan" && (
+          <Link href={`/order/${order.id}/struk`} className="btn-secondary btn-sm mt-4 inline-flex" data-track="lihat-struk">
+            🧾 Lihat struk / cetak PDF
+          </Link>
+        )}
       </div>
 
       {order.status === "selesai" && (
