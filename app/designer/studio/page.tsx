@@ -13,8 +13,8 @@ import { track } from "@/lib/track";
 // then submit the design for curation.
 
 export default function StudioPage() {
-  const [designUri, setDesignUri] = useState<string>(DESIGNS[0].uri);
-  const [title, setTitle] = useState<string>(DESIGNS[0].title + " — Remix");
+  const [designUri, setDesignUri] = useState<string>("");
+  const [title, setTitle] = useState<string>("");
   const [type, setType] = useState<ProductType>("kaos");
   const [color, setColor] = useState("putih");
   const [view, setView] = useState<MockupView>("flat");
@@ -93,6 +93,10 @@ export default function StudioPage() {
   }
 
   async function submit() {
+    if (!designUri) {
+      setError("Unggah desainmu dulu sebelum mengajukan — pilih file PNG/JPG/WebP/SVG di langkah 1.");
+      return;
+    }
     setError("");
     const res = await fetch("/api/designs", {
       method: "POST",
@@ -128,23 +132,46 @@ export default function StudioPage() {
         {/* controls */}
         <div className="space-y-5">
           <section className="card p-5">
-            <p className="font-bold">1 · Pilih karya</p>
-            <div className="mt-3 grid grid-cols-4 gap-2">
-              {DESIGNS.map((d) => (
-                <button
-                  key={d.id}
-                  onClick={() => { setDesignUri(d.uri); setTitle(d.title + " — Remix"); }}
-                  className={`overflow-hidden rounded-xl border-2 bg-white p-1 transition ${designUri === d.uri ? "border-jade-700" : "border-transparent hover:border-ink/20"}`}
-                  title={d.title}
-                >
+            <p className="font-bold">1 · Unggah karya</p>
+            {designUri ? (
+              <div className="mt-3 flex items-center gap-3">
+                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 border-jade-700 bg-white p-1">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={d.uri} alt={d.title} className="aspect-square w-full object-contain" />
+                  <img src={designUri} alt="Karya yang diunggah" className="h-full w-full object-contain" />
+                </div>
+                <button onClick={() => fileRef.current?.click()} className="btn-secondary btn-sm flex-1">
+                  Ganti file
                 </button>
-              ))}
-            </div>
-            <button onClick={() => fileRef.current?.click()} className="btn-secondary btn-sm mt-3 w-full">
-              ⬆ Unggah karyamu (PNG/JPG/WebP/SVG, maks 4 MB)
-            </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="mt-3 flex w-full flex-col items-center gap-1 rounded-xl border-2 border-dashed border-ink/20 bg-cream px-4 py-8 text-center transition hover:border-jade-600"
+              >
+                <span className="text-3xl">⬆</span>
+                <span className="font-semibold">Unggah karyamu untuk memulai</span>
+                <span className="text-xs text-ink/55">PNG/JPG/WebP/SVG, maks 4 MB</span>
+              </button>
+            )}
+            {/* sample artwork only exists in dev builds */}
+            {process.env.NODE_ENV !== "production" && (
+              <div className="mt-3">
+                <p className="text-xs font-semibold text-ink/50">Contoh karya (hanya mode dev)</p>
+                <div className="mt-1.5 grid grid-cols-4 gap-2">
+                  {DESIGNS.map((d) => (
+                    <button
+                      key={d.id}
+                      onClick={() => { setDesignUri(d.uri); setTitle(d.title + " — Remix"); }}
+                      className={`overflow-hidden rounded-xl border-2 bg-white p-1 transition ${designUri === d.uri ? "border-jade-700" : "border-transparent hover:border-ink/20"}`}
+                      title={d.title}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={d.uri} alt={d.title} className="aspect-square w-full object-contain" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onUpload} />
           </section>
 

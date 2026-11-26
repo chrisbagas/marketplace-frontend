@@ -147,7 +147,7 @@ export default function AdminPage() {
 
           <div className="card p-5" style={{ background: "var(--viz-surface)" }}>
             <p className="font-bold">Pendapatan harian</p>
-            <p className="mb-3 text-xs" style={{ color: "var(--viz-ink-2)" }}>GMV kotor per hari, termasuk transaksi live dari sesi demo ini</p>
+            <p className="mb-3 text-xs" style={{ color: "var(--viz-ink-2)" }}>GMV kotor per hari</p>
             <LineChart points={stats.days.map((d) => ({ label: d.date.slice(5), value: d.revenue }))} format={rupiah} compactFormat={idr} />
           </div>
 

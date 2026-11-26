@@ -42,7 +42,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <li><a href="/products" className="hover:text-ink">Semua produk</a></li>
                 <li><a href="/designer" className="hover:text-ink">Jadi kreator</a></li>
                 <li><a href="/designer/studio" className="hover:text-ink">Studio Mockup</a></li>
-                <li><a href="/admin" className="hover:text-ink">Dashboard admin (demo)</a></li>
               </ul>
             </div>
             <div className="text-sm">
@@ -54,7 +53,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   </span>
                 ))}
               </div>
-              <p className="mt-3 text-xs text-ink/40">Prototipe demo — pembayaran memakai gateway sandbox tiruan.</p>
             </div>
           </div>
         </footer>

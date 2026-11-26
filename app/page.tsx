@@ -1,7 +1,8 @@
 import Link from "next/link";
+import Avatar from "@/components/Avatar";
 import Mockup from "@/components/Mockup";
 import ProductCard from "@/components/ProductCard";
-import { ALL_LISTINGS, DESIGNERS, COLORS, listingById } from "@/lib/data";
+import { COLORS } from "@/lib/data";
 import { getProducts } from "@/lib/api";
 import { getTaxonomy } from "@/lib/search";
 import type { Product } from "@/lib/types";
@@ -14,18 +15,34 @@ const CATEGORIES = [
   { type: "totebag", label: "Totebag", emoji: "👜" },
 ];
 
+// Positions of the (up to three) hero mockups.
+const HERO_SLOTS = ["left-0 top-6 -rotate-6", "right-2 top-0 rotate-6", "bottom-0 left-1/3 rotate-2"];
+
+type Creator = { id: string; name: string; avatar?: string; products: number; sold: number };
+
 export default async function HomePage() {
-  // tren dari database; fallback ke seed statis bila backend belum jalan
-  const listings: Product[] = await getProducts().catch(() => ALL_LISTINGS);
+  // Everything shown here comes from the API; a fresh database has no products.
+  const [fetched, taxonomy] = await Promise.all([
+    getProducts().then((l) => ({ ok: true as const, l }), () => ({ ok: false as const, l: [] as Product[] })),
+    getTaxonomy().catch(() => null),
+  ]);
+  const listings = fetched.l;
+  const loadFailed = !fetched.ok;
   // themes that actually have products, busiest first
-  const themes = await getTaxonomy()
-    .then((t) => (t.attributes.find((a) => a.id === "tema")?.values ?? []).filter((v) => v.count > 0).sort((a, b) => b.count - a.count))
-    .catch(() => []);
+  const themes = (taxonomy?.attributes.find((a) => a.id === "tema")?.values ?? []).filter((v) => v.count > 0).sort((a, b) => b.count - a.count);
+  const typeCounts: Record<string, number> | null = taxonomy ? Object.fromEntries(taxonomy.types.map((t) => [t.id, t.count])) : null;
   const trending = [...listings].sort((a, b) => b.sold - a.sold).slice(0, 8);
-  const heroA = listingById("kaos-anak-senja")!;
-  const heroB = listingById("mug-kopi-dulu")!;
-  const heroC = listingById("totebag-kawung")!;
+  const heroes = trending.slice(0, 3);
   const totalSold = listings.reduce((a, l) => a + l.sold, 0);
+  const creatorMap = new Map<string, Creator>();
+  for (const l of listings) {
+    const c = creatorMap.get(l.designerId) ?? { id: l.designerId, name: l.designerName, avatar: l.designerAvatar, products: 0, sold: 0 };
+    c.products += 1;
+    c.sold += l.sold;
+    creatorMap.set(l.designerId, c);
+  }
+  const creatorCount = creatorMap.size;
+  const creators = [...creatorMap.values()].sort((a, b) => b.sold - a.sold).slice(0, 4);
 
   return (
     <div>
@@ -51,23 +68,25 @@ export default async function HomePage() {
                 Jual desainmu →
               </Link>
             </div>
-            <div className="mt-10 flex gap-8 text-sm">
-              <div><p className="text-2xl font-extrabold">{compact(totalSold)}+</p><p className="text-white/60">produk terjual</p></div>
-              <div><p className="text-2xl font-extrabold">{DESIGNERS.length * 320}+</p><p className="text-white/60">kreator aktif</p></div>
-              <div><p className="text-2xl font-extrabold">4.9★</p><p className="text-white/60">rating pembeli</p></div>
-            </div>
+            {listings.length > 0 && (
+              <div className="mt-10 flex gap-8 text-sm">
+                {totalSold > 0 && (
+                  <div><p className="text-2xl font-extrabold">{compact(totalSold)}</p><p className="text-white/60">produk terjual</p></div>
+                )}
+                <div><p className="text-2xl font-extrabold">{creatorCount}</p><p className="text-white/60">kreator</p></div>
+                <div><p className="text-2xl font-extrabold">{listings.length}</p><p className="text-white/60">produk</p></div>
+              </div>
+            )}
           </div>
-          <div className="relative hidden h-96 md:block">
-            <div className="absolute left-0 top-6 w-56 -rotate-6 rounded-3xl bg-white/95 p-3 shadow-2xl">
-              <Mockup type="kaos" colorHex={COLORS.hitam.hex} designUri={heroA.designUri} />
+          {heroes.length > 0 && (
+            <div className="relative hidden h-96 md:block">
+              {heroes.map((h, i) => (
+                <div key={h.id} className={`absolute w-52 rounded-3xl bg-white/95 p-3 shadow-2xl ${HERO_SLOTS[i]}`}>
+                  <Mockup type={h.type} colorHex={COLORS[h.colorIds[0]].hex} designUri={h.designUri} />
+                </div>
+              ))}
             </div>
-            <div className="absolute right-2 top-0 w-48 rotate-6 rounded-3xl bg-white/95 p-3 shadow-2xl">
-              <Mockup type="mug" colorHex={COLORS.putih.hex} designUri={heroB.designUri} />
-            </div>
-            <div className="absolute bottom-0 left-1/3 w-52 rotate-2 rounded-3xl bg-white/95 p-3 shadow-2xl">
-              <Mockup type="totebag" colorHex={COLORS.krem.hex} designUri={heroC.designUri} />
-            </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -84,7 +103,9 @@ export default async function HomePage() {
               <span className="text-3xl">{c.emoji}</span>
               <div>
                 <p className="font-bold">{c.label}</p>
-                <p className="text-xs text-ink/55">{ALL_LISTINGS.filter((l) => l.type === c.type).length} desain</p>
+                <p className="text-xs text-ink/55">
+                  {typeCounts === null ? "Lihat semua" : (typeCounts[c.type] ?? 0) > 0 ? `${typeCounts[c.type]} desain` : "Segera hadir"}
+                </p>
               </div>
             </Link>
           ))}
@@ -113,18 +134,37 @@ export default async function HomePage() {
       <section className="mx-auto max-w-6xl px-4 py-6">
         <div className="mb-6 flex items-end justify-between">
           <div>
-            <h2 className="text-2xl font-extrabold tracking-tight">Lagi tren minggu ini 🔥</h2>
-            <p className="text-sm text-ink/55">Paling banyak dibeli 7 hari terakhir</p>
+            <h2 className="text-2xl font-extrabold tracking-tight">Lagi tren 🔥</h2>
+            <p className="text-sm text-ink/55">Paling banyak dibeli</p>
           </div>
           <Link href="/products" className="text-sm font-bold text-jade-700 hover:underline">
             Lihat semua →
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {trending.map((l) => (
-            <ProductCard key={l.id} listing={l} />
-          ))}
-        </div>
+        {trending.length > 0 ? (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {trending.map((l) => (
+              <ProductCard key={l.id} listing={l} />
+            ))}
+          </div>
+        ) : (
+          <div className="card p-10 text-center">
+            <p className="text-4xl">{loadFailed ? "🔌" : "🎨"}</p>
+            <p className="mt-3 font-bold">
+              {loadFailed ? "Produk belum bisa dimuat" : "Belum ada produk"}
+            </p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-ink/60">
+              {loadFailed
+                ? "Terjadi gangguan saat mengambil daftar produk. Coba muat ulang halaman beberapa saat lagi."
+                : "Karya kreator pertama segera hadir. Kamu juga bisa jadi yang pertama menjual desainmu di sini."}
+            </p>
+            {!loadFailed && (
+              <Link href="/designer/studio" className="btn-primary mt-5 inline-flex">
+                Jual desainmu →
+              </Link>
+            )}
+          </div>
+        )}
       </section>
 
       {/* how it works */}
@@ -132,7 +172,7 @@ export default async function HomePage() {
         <h2 className="mb-8 text-center text-2xl font-extrabold tracking-tight">Cara kerjanya</h2>
         <div className="grid gap-4 md:grid-cols-3">
           {[
-            { n: "1", t: "Pilih karya favoritmu", d: "Jelajahi ribuan desain orisinal kreator lokal, pilih produk, warna, dan ukuranmu." },
+            { n: "1", t: "Pilih karya favoritmu", d: "Jelajahi desain orisinal kreator lokal, pilih produk, warna, dan ukuranmu." },
             { n: "2", t: "Kami cetak sesuai pesanan", d: "Dicetak DTG premium satu per satu setelah kamu bayar — lolos QC sebelum dikemas." },
             { n: "3", t: "Dikirim ke seluruh Indonesia", d: "Estimasi 3–5 hari kerja. Kreator menerima royalti dari setiap pembelianmu." },
           ].map((s) => (
@@ -145,25 +185,26 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* designers */}
-      <section className="mx-auto max-w-6xl px-4 py-6">
-        <h2 className="mb-6 text-2xl font-extrabold tracking-tight">Kreator pilihan</h2>
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-          {DESIGNERS.map((d) => (
-            <div key={d.id} className="card p-5">
-              <div
-                className="flex h-12 w-12 items-center justify-center rounded-full text-lg font-extrabold text-white"
-                style={{ background: `hsl(${d.hue} 45% 40%)` }}
+      {/* designers: only creators that really have products listed */}
+      {creators.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-6">
+          <h2 className="mb-6 text-2xl font-extrabold tracking-tight">Kreator pilihan</h2>
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+            {creators.map((d) => (
+              <Link
+                key={d.id}
+                href={`/products?designer=${encodeURIComponent(d.id)}`}
+                className="card block p-5 transition hover:-translate-y-0.5 hover:border-jade-600 hover:shadow-lg"
+                data-track={`kreator-${d.id}`}
               >
-                {d.name[0]}
-              </div>
-              <p className="mt-3 font-bold">{d.name}</p>
-              <p className="text-xs text-ink/55">{d.city} · {compact(d.followers)} pengikut · ★ {d.rating}</p>
-              <p className="mt-2 line-clamp-2 text-sm text-ink/65">{d.bio}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+                <Avatar uri={d.avatar} name={d.name} size={48} />
+                <p className="mt-3 font-bold">{d.name}</p>
+                <p className="text-xs text-ink/55">{d.products} produk · {compact(d.sold)} terjual</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* creator CTA */}
       <section className="mx-auto max-w-6xl px-4 py-14">

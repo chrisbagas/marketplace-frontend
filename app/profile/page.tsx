@@ -68,7 +68,7 @@ export default function ProfilePage() {
     <div className="mx-auto max-w-4xl px-4 py-10">
       <h1 className="text-3xl font-extrabold tracking-tight">Profil Saya</h1>
       <p className="mt-1 text-sm text-ink/55">
-        Alamat & preferensimu dipakai otomatis saat checkout. <span className="text-ink/40">(Prototipe tanpa login — profil demo.)</span>
+        Alamat & preferensimu dipakai otomatis saat checkout.
       </p>
 
       <div className="mt-8 grid gap-6 md:grid-cols-2">
